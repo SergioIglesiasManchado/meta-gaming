@@ -1,26 +1,73 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from './stores/auth';
+import { useSettingsStore } from './stores/settings';
 
 const router = useRouter();
 const authStore = useAuthStore();
+const settingsStore = useSettingsStore();
 
 const isAuthenticated = computed(() => authStore.isAuthenticated);
 const isAdmin = computed(() => authStore.isAdmin);
 const username = computed(() => authStore.user?.username);
 
 const isMobileMenuOpen = ref(false);
+const isSettingsMenuOpen = ref(false);
+const settingsContainer = ref<HTMLElement | null>(null);
+const settingsButton = ref<HTMLButtonElement | null>(null);
+
+watch(
+  () => settingsStore.theme,
+  (theme) => {
+    document.documentElement.dataset.theme = theme;
+  },
+  { immediate: true }
+);
 
 const handleLogout = () => {
   authStore.logout();
   isMobileMenuOpen.value = false;
+  isSettingsMenuOpen.value = false;
   router.push('/login');
 };
 
 const closeMenu = () => {
   isMobileMenuOpen.value = false;
 };
+
+const toggleMobileMenu = () => {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value;
+  isSettingsMenuOpen.value = false;
+};
+
+const toggleSettingsMenu = () => {
+  isSettingsMenuOpen.value = !isSettingsMenuOpen.value;
+  isMobileMenuOpen.value = false;
+};
+
+const closeSettingsMenuOnOutsideClick = (event: MouseEvent) => {
+  if (event.target instanceof Node && !settingsContainer.value?.contains(event.target)) {
+    isSettingsMenuOpen.value = false;
+  }
+};
+
+const closeSettingsMenuOnEscape = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && isSettingsMenuOpen.value) {
+    isSettingsMenuOpen.value = false;
+    settingsButton.value?.focus();
+  }
+};
+
+onMounted(() => {
+  document.addEventListener('click', closeSettingsMenuOnOutsideClick);
+  document.addEventListener('keydown', closeSettingsMenuOnEscape);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeSettingsMenuOnOutsideClick);
+  document.removeEventListener('keydown', closeSettingsMenuOnEscape);
+});
 </script>
 
 <template>
@@ -53,7 +100,7 @@ const closeMenu = () => {
         <!-- Hamburger button (mobile only) -->
         <button
           class="hamburger"
-          @click="isMobileMenuOpen = !isMobileMenuOpen"
+          @click="toggleMobileMenu"
           :aria-expanded="isMobileMenuOpen"
           aria-label="Toggle navigation menu"
         >
@@ -61,6 +108,48 @@ const closeMenu = () => {
             <span></span><span></span><span></span>
           </span>
         </button>
+
+        <div ref="settingsContainer" class="settings-container">
+          <button
+            ref="settingsButton"
+            class="settings-trigger"
+            type="button"
+            aria-label="Settings"
+            aria-haspopup="true"
+            aria-controls="settings-menu"
+            :aria-expanded="isSettingsMenuOpen"
+            @click.stop="toggleSettingsMenu"
+          >
+            <span aria-hidden="true">⚙️</span>
+            <span>Settings</span>
+          </button>
+          <section
+            v-if="isSettingsMenuOpen"
+            id="settings-menu"
+            class="settings-menu"
+            aria-label="Settings"
+            @click.stop
+          >
+            <h2 class="settings-title">Settings</h2>
+            <div class="settings-section" role="group" aria-labelledby="appearance-heading">
+              <h3 id="appearance-heading" class="settings-section-title">Appearance</h3>
+              <div class="setting-option">
+                <span class="setting-label">Dark mode</span>
+                <button
+                  type="button"
+                  class="theme-switch"
+                  role="switch"
+                  aria-label="Dark mode"
+                  :aria-checked="settingsStore.theme === 'dark'"
+                  data-testid="settings-theme-toggle"
+                  @click="settingsStore.toggleTheme"
+                >
+                  <span class="theme-switch-thumb"></span>
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
 
       <!-- Mobile dropdown -->
@@ -113,6 +202,7 @@ const closeMenu = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: relative;
 }
 
 .brand-link {
@@ -238,6 +328,116 @@ const closeMenu = () => {
 }
 .hamburger-icon.open span:nth-child(3) {
   transform: translateY(-7px) rotate(-45deg);
+}
+
+.settings-container {
+  display: flex;
+  align-items: center;
+}
+
+.settings-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  color: #475569;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-trigger:hover,
+.settings-trigger[aria-expanded='true'] {
+  color: #4f46e5;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.settings-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 110;
+  width: min(320px, calc(100vw - 2rem));
+  padding: 1rem;
+  color: #1e293b;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+}
+
+.settings-title {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+}
+
+.settings-section + .settings-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.settings-section-title {
+  margin: 0 0 0.75rem;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.setting-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 44px;
+}
+
+.setting-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.theme-switch {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  padding: 3px;
+  background: #cbd5e1;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.theme-switch[aria-checked='true'] {
+  background: #4f46e5;
+}
+
+.theme-switch:focus-visible,
+.settings-trigger:focus-visible {
+  outline: 3px solid #818cf8;
+  outline-offset: 2px;
+}
+
+.theme-switch-thumb {
+  display: block;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.theme-switch[aria-checked='true'] .theme-switch-thumb {
+  transform: translateX(18px);
 }
 
 /* Mobile menu */
