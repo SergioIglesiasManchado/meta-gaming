@@ -55,7 +55,11 @@ export class CommunityController {
         return;
       }
 
-      const posts = await CommunityService.getCommunityPosts(communityId);
+      const type = req.query.type as string | undefined;
+      const sort = req.query.sort as 'newest' | 'upvotes' | undefined;
+      const currentUserId = (req as any).user?.id;
+
+      const posts = await CommunityService.getCommunityPosts(communityId, { type, sort }, currentUserId);
       res.status(200).json({
         status: 'success',
         data: { posts }
@@ -85,13 +89,42 @@ export class CommunityController {
         return;
       }
 
-      const { title, content } = req.body;
-      const post = await CommunityService.createPost(communityId, userId, { title, content });
+      const { title, content, post_type, media_url } = req.body;
+      const post = await CommunityService.createPost(communityId, userId, {
+        title,
+        content,
+        post_type,
+        media_url,
+      });
 
       res.status(201).json({
         status: 'success',
         message: 'Question posted successfully',
         data: { post }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public static async toggleReaction(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const postId = parseInt(req.params.postId, 10);
+      if (isNaN(postId)) {
+        res.status(400).json({ status: 'fail', message: 'Invalid post ID' });
+        return;
+      }
+
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        res.status(401).json({ status: 'fail', message: 'Unauthorized' });
+        return;
+      }
+
+      const result = await CommunityService.toggleReaction(postId, userId);
+      res.status(200).json({
+        status: 'success',
+        data: result,
       });
     } catch (error) {
       next(error);
@@ -109,7 +142,8 @@ export class CommunityController {
         return;
       }
 
-      const result = await CommunityService.getPostWithComments(postId);
+      const currentUserId = (req as any).user?.id;
+      const result = await CommunityService.getPostWithComments(postId, currentUserId);
       res.status(200).json({
         status: 'success',
         data: result

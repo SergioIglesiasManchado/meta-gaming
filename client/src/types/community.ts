@@ -1,3 +1,5 @@
+export type PostType = 'question' | 'discussion' | 'guide' | 'screenshot';
+
 export interface Community {
   id: number;
   game_id: number;
@@ -16,6 +18,10 @@ export interface CommunityPost {
   username: string;
   title: string;
   content: string;
+  post_type: PostType;
+  media_url?: string;
+  upvotes_count?: number;
+  has_upvoted?: boolean;
   created_at: string;
   updated_at: string;
   comments_count: number;
@@ -31,4 +37,16 @@ export interface CommunityComment {
   created_at: string;
   updated_at: string;
   replies?: CommunityComment[];
+}
+
+export interface CreatePostDto {
+  title: string;
+  content: string;
+  post_type?: PostType;
+  media_url?: string;
+}
+
+export interface CreateCommentDto {
+  content: string;
+  parent_comment_id?: number | null;
 }

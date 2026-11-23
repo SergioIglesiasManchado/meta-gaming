@@ -78,11 +78,15 @@ export class CommunityService {
     return result.rows[0];
   }
 
-  public static async getCommunityPosts(communityId: number): Promise<CommunityPost[]> {
+  public static async getCommunityPosts(
+    communityId: number,
+    options?: { type?: string; sort?: 'newest' | 'upvotes' },
+    currentUserId?: number
+  ): Promise<CommunityPost[]> {
     // Verify community exists
     await this.getCommunityById(communityId);
 
-    const sql = `
+    let sql = `
       SELECT 
         p.id,
         p.community_id,
@@ -90,18 +94,35 @@ export class CommunityService {
         u.username,
         p.title,
         p.content,
+        p.post_type,
+        p.media_url,
         p.created_at,
         p.updated_at,
-        COUNT(c.id)::int AS comments_count
+        COUNT(DISTINCT c.id)::int AS comments_count,
+        COUNT(DISTINCT pr.id)::int AS upvotes_count,
+        COALESCE(BOOL_OR(pr.user_id = $2), FALSE) AS has_upvoted
       FROM community_posts p
       JOIN users u ON p.user_id = u.id
       LEFT JOIN community_comments c ON c.post_id = p.id
+      LEFT JOIN post_reactions pr ON pr.post_id = p.id
       WHERE p.community_id = $1
-      GROUP BY p.id, u.username
-      ORDER BY p.created_at DESC
     `;
+    const params: any[] = [communityId, currentUserId || 0];
 
-    const result = await query(sql, [communityId]);
+    if (options?.type && options.type !== 'all') {
+      params.push(options.type);
+      sql += ` AND p.post_type = $${params.length}`;
+    }
+
+    sql += ` GROUP BY p.id, u.username`;
+
+    if (options?.sort === 'upvotes') {
+      sql += ` ORDER BY upvotes_count DESC, p.created_at DESC`;
+    } else {
+      sql += ` ORDER BY p.created_at DESC`;
+    }
+
+    const result = await query(sql, params);
     return result.rows;
   }
 
@@ -125,17 +146,25 @@ export class CommunityService {
       throw error;
     }
 
+    const post_type =
+      dto.post_type && ['question', 'discussion', 'guide', 'screenshot'].includes(dto.post_type)
+        ? dto.post_type
+        : 'question';
+    const media_url = dto.media_url ? dto.media_url.trim() : '';
+
     const insertSql = `
-      INSERT INTO community_posts (community_id, user_id, title, content)
-      VALUES ($1, $2, $3, $4)
-      RETURNING id, community_id, user_id, title, content, created_at, updated_at
+      INSERT INTO community_posts (community_id, user_id, title, content, post_type, media_url)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, community_id, user_id, title, content, post_type, media_url, created_at, updated_at
     `;
 
     const insertResult = await query(insertSql, [
       communityId,
       userId,
       title.trim(),
-      content.trim()
+      content.trim(),
+      post_type,
+      media_url,
     ]);
 
     const userResult = await query('SELECT username FROM users WHERE id = $1', [userId]);
@@ -144,12 +173,52 @@ export class CommunityService {
     return {
       ...insertResult.rows[0],
       username,
-      comments_count: 0
+      comments_count: 0,
+      upvotes_count: 0,
+      has_upvoted: false,
     };
   }
 
+  public static async toggleReaction(
+    postId: number,
+    userId: number
+  ): Promise<{ upvoted: boolean; upvotes_count: number }> {
+    const postCheck = await query('SELECT id FROM community_posts WHERE id = $1', [postId]);
+    if (postCheck.rows.length === 0) {
+      const error = new Error('Post not found');
+      (error as any).statusCode = 404;
+      throw error;
+    }
+
+    const existing = await query(
+      'SELECT id FROM post_reactions WHERE post_id = $1 AND user_id = $2',
+      [postId, userId]
+    );
+
+    let upvoted: boolean;
+    if (existing.rows.length > 0) {
+      await query('DELETE FROM post_reactions WHERE post_id = $1 AND user_id = $2', [postId, userId]);
+      upvoted = false;
+    } else {
+      await query(
+        'INSERT INTO post_reactions (post_id, user_id, reaction_type) VALUES ($1, $2, $3)',
+        [postId, userId, 'upvote']
+      );
+      upvoted = true;
+    }
+
+    const countRes = await query<{ count: string }>(
+      'SELECT COUNT(*)::text as count FROM post_reactions WHERE post_id = $1',
+      [postId]
+    );
+    const upvotes_count = parseInt(countRes.rows[0]?.count || '0', 10);
+
+    return { upvoted, upvotes_count };
+  }
+
   public static async getPostWithComments(
-    postId: number
+    postId: number,
+    currentUserId?: number
   ): Promise<{ post: CommunityPost; comments: CommunityComment[] }> {
     const postSql = `
       SELECT 
@@ -159,17 +228,22 @@ export class CommunityService {
         u.username,
         p.title,
         p.content,
+        p.post_type,
+        p.media_url,
         p.created_at,
         p.updated_at,
-        COUNT(c.id)::int AS comments_count
+        COUNT(DISTINCT c.id)::int AS comments_count,
+        COUNT(DISTINCT pr.id)::int AS upvotes_count,
+        COALESCE(BOOL_OR(pr.user_id = $2), FALSE) AS has_upvoted
       FROM community_posts p
       JOIN users u ON p.user_id = u.id
       LEFT JOIN community_comments c ON c.post_id = p.id
+      LEFT JOIN post_reactions pr ON pr.post_id = p.id
       WHERE p.id = $1
       GROUP BY p.id, u.username
     `;
 
-    const postResult = await query(postSql, [postId]);
+    const postResult = await query(postSql, [postId, currentUserId || 0]);
     if (postResult.rows.length === 0) {
       const error = new Error('Post not found');
       (error as any).statusCode = 404;

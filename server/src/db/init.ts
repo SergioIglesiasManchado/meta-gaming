@@ -74,12 +74,30 @@ export const initDb = async (): Promise<void> => {
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       title VARCHAR(255) NOT NULL,
       content TEXT NOT NULL,
+      post_type VARCHAR(30) DEFAULT 'question' NOT NULL CHECK (post_type IN ('question', 'discussion', 'guide', 'screenshot')),
+      media_url TEXT DEFAULT '' NOT NULL,
       created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
       updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
     );
 
+    ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS post_type VARCHAR(30) DEFAULT 'question' NOT NULL;
+    ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS media_url TEXT DEFAULT '' NOT NULL;
+
     CREATE INDEX IF NOT EXISTS idx_community_posts_community_id ON community_posts(community_id);
     CREATE INDEX IF NOT EXISTS idx_community_posts_user_id ON community_posts(user_id);
+    CREATE INDEX IF NOT EXISTS idx_community_posts_type ON community_posts(post_type);
+
+    CREATE TABLE IF NOT EXISTS post_reactions (
+      id SERIAL PRIMARY KEY,
+      post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      reaction_type VARCHAR(20) DEFAULT 'upvote' NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+      CONSTRAINT unique_post_user_reaction UNIQUE (post_id, user_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_post_reactions_post ON post_reactions(post_id);
+    CREATE INDEX IF NOT EXISTS idx_post_reactions_user ON post_reactions(user_id);
 
     CREATE TABLE IF NOT EXISTS community_comments (
       id SERIAL PRIMARY KEY,
