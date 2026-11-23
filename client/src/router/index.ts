@@ -6,6 +6,7 @@ import DashboardView from '../views/DashboardView.vue';
 import GamesView from '../views/GamesView.vue';
 import GameDetailView from '../views/GameDetailView.vue';
 import CommunityView from '../views/CommunityView.vue';
+import ProfileView from '../views/ProfileView.vue';
 
 export const routes = [
   {
@@ -32,6 +33,12 @@ export const routes = [
     path: '/dashboard',
     name: 'dashboard',
     component: DashboardView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/profile/:id?',
+    name: 'profile',
+    component: ProfileView,
     meta: { requiresAuth: true }
   },
   {

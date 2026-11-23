@@ -53,3 +53,26 @@ export const requireAdmin = (req: AuthenticatedRequest, res: Response, next: Nex
   }
   next();
 };
+
+export const optionalAuth = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return next();
+  }
+
+  const token = authHeader.split(' ')[1];
+  const jwtSecret = process.env.JWT_SECRET || 'dev_jwt_secret_change_in_production';
+
+  try {
+    const decoded = jwt.verify(token, jwtSecret) as UserProfile;
+    const banCheck = await query('SELECT is_banned FROM users WHERE id = $1', [decoded.id]);
+    if (banCheck.rows.length > 0 && !banCheck.rows[0].is_banned) {
+      req.user = decoded;
+    }
+  } catch {
+    // Ignore invalid token in optional auth
+  }
+
+  next();
+};
