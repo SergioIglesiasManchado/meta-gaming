@@ -834,4 +834,59 @@ const formatStatus = (status: TrackStatus) => {
 .empty-library p {
   margin-bottom: 1rem;
 }
+
+@media (max-width: 640px) {
+  .profile-container {
+    padding: 1rem 0.75rem;
+  }
+  .profile-header-card {
+    padding: 1.25rem;
+  }
+  .profile-header-main {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.25rem;
+  }
+  .name-role-row {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .platforms-list {
+    justify-content: center;
+  }
+  .header-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  .library-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  .search-box {
+    display: flex;
+    width: 100%;
+  }
+  .library-search-input {
+    flex: 1;
+    width: auto;
+  }
+  .status-tabs {
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    white-space: nowrap;
+    display: flex;
+  }
+  .tab-btn {
+    flex-shrink: 0;
+  }
+  .games-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

@@ -110,7 +110,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="chat-layout">
+  <div class="chat-layout" :class="{ 'has-active': !!chatStore.currentConversation }">
     <!-- Sidebar -->
     <aside class="chat-sidebar">
       <div class="sidebar-header">
@@ -236,6 +236,14 @@ onMounted(async () => {
       <div v-if="chatStore.currentConversation" class="chat-active">
         <!-- Chat Header -->
         <header class="chat-header">
+          <button
+            @click="chatStore.currentConversation = null"
+            class="btn-back-mobile"
+            aria-label="Back to conversations"
+            title="Back to conversations"
+          >
+            ←
+          </button>
           <div class="header-info">
             <h3 class="active-title">{{ chatStore.currentConversation.title }}</h3>
             <span v-if="chatStore.currentConversation.is_group" class="group-tag">
@@ -832,5 +840,48 @@ onMounted(async () => {
   padding: 0.5rem 1rem;
   border-radius: 6px;
   cursor: pointer;
+}
+
+.btn-back-mobile {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  margin-right: 0.5rem;
+  color: var(--text-color, #111827);
+  border-radius: 6px;
+}
+
+@media (max-width: 768px) {
+  .chat-layout {
+    height: calc(100vh - 80px);
+    margin: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+  .chat-sidebar {
+    width: 100%;
+    border-right: none;
+  }
+  .chat-layout.has-active .chat-sidebar {
+    display: none;
+  }
+  .chat-main {
+    display: none;
+    width: 100%;
+  }
+  .chat-layout.has-active .chat-main {
+    display: flex;
+    flex-direction: column;
+  }
+  .btn-back-mobile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 </style>
