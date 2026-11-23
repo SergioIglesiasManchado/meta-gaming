@@ -10,11 +10,14 @@ export const errorHandler: ErrorRequestHandler = (
   res: Response,
   _next: NextFunction
 ): void => {
-  const statusCode = err.statusCode || 500;
+  let statusCode = err.statusCode || 500;
+  if ((err as any).name === 'MulterError' || (err as any).code === 'LIMIT_FILE_SIZE' || err.message?.includes('images are allowed')) {
+    statusCode = 400;
+  }
   const isProduction = process.env.NODE_ENV === 'production';
 
   res.status(statusCode).json({
-    status: 'error',
+    status: statusCode >= 500 ? 'error' : 'fail',
     message: err.message || 'Internal Server Error',
     ...(isProduction ? {} : { stack: err.stack })
   });
