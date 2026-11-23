@@ -7,6 +7,8 @@ import GamesView from '../views/GamesView.vue';
 import GameDetailView from '../views/GameDetailView.vue';
 import CommunityView from '../views/CommunityView.vue';
 import ProfileView from '../views/ProfileView.vue';
+import CollectionsView from '../views/CollectionsView.vue';
+import CollectionDetailView from '../views/CollectionDetailView.vue';
 
 export const routes = [
   {
@@ -40,6 +42,16 @@ export const routes = [
     name: 'profile',
     component: ProfileView,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/collections',
+    name: 'collections',
+    component: CollectionsView
+  },
+  {
+    path: '/collections/:id',
+    name: 'collection-detail',
+    component: CollectionDetailView
   },
   {
     path: '/games',

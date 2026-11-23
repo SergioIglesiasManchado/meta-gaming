@@ -121,6 +121,33 @@ export const initDb = async (): Promise<void> => {
     CREATE INDEX IF NOT EXISTS idx_game_tracks_game_id ON game_tracks(game_id);
     CREATE INDEX IF NOT EXISTS idx_game_tracks_status ON game_tracks(status);
 
+    CREATE TABLE IF NOT EXISTS collections (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title VARCHAR(255) NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      is_official BOOLEAN NOT NULL DEFAULT FALSE,
+      is_public BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_collections_user_id ON collections(user_id);
+    CREATE INDEX IF NOT EXISTS idx_collections_is_official ON collections(is_official);
+    CREATE INDEX IF NOT EXISTS idx_collections_is_public ON collections(is_public);
+
+    CREATE TABLE IF NOT EXISTS collection_games (
+      id SERIAL PRIMARY KEY,
+      collection_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+      game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+      order_index INTEGER NOT NULL DEFAULT 0,
+      added_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+      CONSTRAINT unique_collection_game UNIQUE (collection_id, game_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_collection_games_collection_id ON collection_games(collection_id);
+    CREATE INDEX IF NOT EXISTS idx_collection_games_game_id ON collection_games(game_id);
+
     INSERT INTO communities (game_id, name, description)
     SELECT id, title, description
     FROM games
