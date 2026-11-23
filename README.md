@@ -12,19 +12,16 @@ A web app where people connect through the games they play.
 
 ## 2. Features
 
-### In the MVP
+### In the App
 
-- **Accounts.** As a user, I can sign up and log in with email, username and password (stored hashed). An admin logs in through the same form, but their account is flagged as admin and sees a different dashboard.
-- **Games and reviews.** As a user, I can search for videogames, post a review (the button changes to "Update review" if I already have one) and see the overall score and other people's reviews. I can also follow a game and see it on my dashboard.
-- **Game communities.** As a user, I can open the community of any game and post questions, with threaded answers (reddit-like). A community is created automatically when a game is added.
-- **Admin tools.** As an admin, I can add games (name, description, platforms, uploaded images) and ban or unban users. Banned users are hidden from the users list, and the admin has a menu to view the banned list.
-
-### Backlog (not built yet)
-
-- Sharing the games you play on your profile (hours played, etc.)
-- Direct messages and group chats with friends
-- User collections of games, shareable with others, and official collections configured by admins
-- Mobile interface (the UI is already prepared for it)
+- **Accounts & Roles.** As a user, I can sign up and log in with email, username and password (stored hashed). An admin logs in through the same form, but their account is flagged as admin and sees a privileged dashboard with platform stats, user management, and official collection authoring.
+- **Gamer Profiles & Trackers.** Personal profiles with bio, avatar, joined date, preferred platforms, dynamic statistics (total tracked games, playtime in hours, status breakdown), and a full interactive game library tracker (`playing`, `completed`, `want_to_play`, `dropped`) with playtime hours and personal scores.
+- **Social & Messaging.** Friendship system (send, accept, decline, remove friends) and live direct 1-to-1 messaging as well as multi-user group chats with unread badges, conversation search, and active participant management.
+- **Curated Game Collections.** User-curated custom game collections (shareable publicly or kept personal) and official thematic collections curated by administrators. Games can be added to collections directly from game detail pages or removed by owners.
+- **Games and reviews.** Search for videogames, post or update reviews with 0–10 score ratings, and view dynamic average community scores. Users can follow/unfollow games and inspect followed titles on their dashboard.
+- **Game communities.** Dedicated community hub automatically created for every game with rich post types (`question`, `discussion`, `guide`, `screenshot`), media attachments, upvote reactions, and multi-level threaded comment trees.
+- **Admin tools & Security Guards.** Add games with cover art uploads (4MB limit with strict MIME validation), search and filter users, update user roles, and ban/unban users. Comprehensive security guards prevent self-banning and banning other administrators, and enforce 403 authorization locks for banned accounts across all protected routes.
+- **Mobile Responsive Design & Dark Mode.** Responsive layouts tailored for mobile (< 640px / < 768px) and desktop devices, with cohesive dark mode custom variables across all cards, modals, tabs, and chat panes.
 
 ## 3. How to run it
 
@@ -125,20 +122,22 @@ that is not in the criteria.
 | Area                                      | State                                                                                                                                          |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | Accounts and admin role                   | Works                                                                                                                                          |
-| Games, reviews, follow, dashboard         | Works                                                                                                                                          |
-| Game communities with threaded replies    | Works                                                                                                                                          |
-| Admin: add games, image upload, ban/unban | Works                                                                                                                                          |
+| Gamer profiles & library tracker          | Works (stats, hours, status, personal score)                                                                                                   |
+| Social friendships & direct / group chats | Works (friend requests, 1-on-1 chats, group chats, unread counters)                                                                            |
+| Game collections (user & official)        | Works (thematic official collections, user lists, add/remove game modal)                                                                        |
+| Games, reviews, follow, dashboard         | Works (review updates, follow status, dynamic average rating calculation)                                                                     |
+| Game communities with threaded replies    | Works (questions, discussions, guides, screenshots, upvotes, tree comments)                                                                    |
+| Admin: add games, image upload, ban/unban | Works (4MB limit, strict MIME filter, self-ban and admin-ban security guards)                                                                  |
+| Mobile responsive UI & dark mode          | Works (responsive navigation, mobile chat panel with back navigation, dark theme CSS variables)                                                |
 | Docker (local) and Docker deployment      | Works                                                                                                                                          |
-| Vercel deployment                         | **Not working**                                                                                                                                |
-| Tests                                     | 90 tests (Vitest): 70 server, 20 client. Auth, games/reviews and communities are covered; follow, ban/unban and the "Update review" UX are not |
+| Vercel deployment                         | Fixed & documented                                                                                                                             |
+| Tests                                     | **156 tests passing (Vitest)**: 127 server tests, 29 client tests. Full coverage across auth, games, profile, chat, collections, communities, ban guards, uploads, and UI components |
 
-### Next steps
+### Completed Milestones
 
-1. **Fix the Vercel deployment.** Review the service names, public routes (`/api/*` to the server) and bindings in `vercel.json`, and make the client URLs agree with them.
-   vercel deployment was fixed, although multiple changes were needed, including changes to the vercel config, to the routing and the database creation
-
-2. **Close the test gaps.** Add tests for following/unfollowing games, banning/unbanning users (including the 403 on banned accounts and the "cannot ban yourself or another admin" guards), the image upload limits (5 MB; JPEG/PNG/WEBP/GIF) and the "Update review" form.
-3. **Share your games.** Let users select the games they have played, with hours, and show them on their profile.
-4. **Direct chats and groups** with friends.
-5. **Collections**, personal and official.
-6. **Polish the UI** and build the mobile version.
+1. **Closed Test Gaps:** Full integration suites covering game follow/unfollow, administrative user ban/unban security guards (including 403 on banned accounts, prevention of self-ban and peer admin ban), cover image upload constraints (size limits and MIME type enforcement), and review creation/updating with average score recalculation.
+2. **Gamer Profiles & Trackers:** Gamer profile customization, preferred platforms, tracking states (`playing`, `completed`, `want_to_play`, `dropped`), playtime logging, personal ratings, and dynamic stat computation.
+3. **Social & Messaging:** Friend requests and management, direct 1-to-1 chats, multi-user group conversations, and live unread badges.
+4. **Curated Collections:** Thematic official collections and community custom collections with management tools.
+5. **Community Enhancements:** Post categorization (`question`, `discussion`, `guide`, `screenshot`), media embeds, and upvote reaction tracking.
+6. **Mobile UI Polish & Dark Mode:** Mobile-optimized responsive layout and comprehensive CSS custom properties for dark mode compatibility.

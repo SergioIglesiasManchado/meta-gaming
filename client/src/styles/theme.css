@@ -1,0 +1,192 @@
+:root {
+  --bg-color: #f8fafc;
+  --text-color: #111827;
+  --text-muted: #6b7280;
+  --card-bg: #ffffff;
+  --card-inner-bg: #f3f4f6;
+  --border-color: #e5e7eb;
+  --input-bg: #ffffff;
+  --hover-bg: #f9fafb;
+  --chip-bg: #f3f4f6;
+
+  /* Chat specific variables */
+  --chat-tab-active-bg: #eef2ff;
+  --chat-tab-active-color: #4f46e5;
+  --chat-conv-active-bg: #eef2ff;
+  --chat-avatar-bg: #e0e7ff;
+  --chat-avatar-color: #4f46e5;
+  --chat-incoming-bubble-bg: #f3f4f6;
+  --chat-incoming-bubble-text: #111827;
+  --chat-author-color: #4f46e5;
+  --chat-request-bg: #fefce8;
+  --chat-request-border: #fef08a;
+  --chat-request-text: #713f12;
+  --chat-tag-pending-bg: #fef3c7;
+  --chat-tag-pending-text: #b45309;
+  --chat-tag-friend-bg: #d1fae5;
+  --chat-tag-friend-text: #065f46;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-color: #0f172a;
+  --text-color: #f1f5f9;
+  --text-muted: #94a3b8;
+  --card-bg: #1e293b;
+  --card-inner-bg: #334155;
+  --border-color: #334155;
+  --input-bg: #0f172a;
+  --hover-bg: #334155;
+  --chip-bg: #334155;
+
+  /* Chat specific variables */
+  --chat-tab-active-bg: #312e81;
+  --chat-tab-active-color: #c7d2fe;
+  --chat-conv-active-bg: rgba(99, 102, 241, 0.25);
+  --chat-avatar-bg: #334155;
+  --chat-avatar-color: #a5b4fc;
+  --chat-incoming-bubble-bg: #334155;
+  --chat-incoming-bubble-text: #f8fafc;
+  --chat-author-color: #a5b4fc;
+  --chat-request-bg: #451a03;
+  --chat-request-border: #78350f;
+  --chat-request-text: #fef08a;
+  --chat-tag-pending-bg: #78350f;
+  --chat-tag-pending-text: #fef3c7;
+  --chat-tag-friend-bg: #064e3b;
+  --chat-tag-friend-text: #a7f3d0;
+}
+
+html[data-theme='dark'] body,
+html[data-theme='dark'] .app-shell,
+html[data-theme='dark'] .main-content {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+html[data-theme='dark'] .navbar,
+html[data-theme='dark'] .mobile-menu {
+  background-color: #111827;
+  border-color: #334155;
+}
+
+html[data-theme='dark'] .nav-link,
+html[data-theme='dark'] .settings-trigger {
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .nav-link:hover,
+html[data-theme='dark'] .settings-trigger:hover,
+html[data-theme='dark'] .settings-trigger[aria-expanded='true'] {
+  color: #a5b4fc;
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+html[data-theme='dark'] .brand-link {
+  color: #a5b4fc;
+}
+
+html[data-theme='dark'] .user-greeting,
+html[data-theme='dark'] .mobile-user-info {
+  color: #e2e8f0;
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+html[data-theme='dark'] .hamburger-icon span {
+  background-color: #cbd5e1;
+}
+
+html[data-theme='dark'] .btn-logout {
+  color: #cbd5e1;
+  border-color: #475569;
+}
+
+html[data-theme='dark'] .mobile-link {
+  color: #e2e8f0;
+  border-color: #1e293b;
+}
+
+html[data-theme='dark'] .mobile-link:hover {
+  background-color: #1e293b;
+}
+
+html[data-theme='dark'] .settings-menu {
+  color: #e2e8f0;
+  background-color: #1e293b;
+  border-color: #475569;
+}
+
+html[data-theme='dark'] .settings-section-title {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .settings-section + .settings-section {
+  border-color: #475569;
+}
+
+html[data-theme='dark'] .auth-card,
+html[data-theme='dark'] .dashboard-header,
+html[data-theme='dark'] .stat-card,
+html[data-theme='dark'] .admin-card,
+html[data-theme='dark'] .user-card,
+html[data-theme='dark'] .followed-card {
+  color: #e2e8f0;
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html[data-theme='dark'] .admin-header {
+  background: #1e293b;
+}
+
+html[data-theme='dark'] .auth-card h2,
+html[data-theme='dark'] .dashboard-header h1,
+html[data-theme='dark'] .section-title h2,
+html[data-theme='dark'] .stat-value,
+html[data-theme='dark'] .card-header h3,
+html[data-theme='dark'] .followed-header h3,
+html[data-theme='dark'] .followed-title,
+html[data-theme='dark'] .description,
+html[data-theme='dark'] .diagnostics-list li {
+  color: #e2e8f0;
+}
+
+html[data-theme='dark'] .auth-card label,
+html[data-theme='dark'] .users-table th,
+html[data-theme='dark'] .users-table td {
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .auth-card input,
+html[data-theme='dark'] .search-bar input,
+html[data-theme='dark'] .users-table th {
+  color: #e2e8f0;
+  background-color: #0f172a;
+  border-color: #475569;
+}
+
+html[data-theme='dark'] .users-table th,
+html[data-theme='dark'] .users-table td,
+html[data-theme='dark'] .banned-toggle-row {
+  border-color: #334155;
+}
+
+html[data-theme='dark'] .followed-card:hover,
+html[data-theme='dark'] .btn-banned-toggle:hover {
+  background-color: #334155;
+}
+
+html[data-theme='dark'] .followed-thumb {
+  background-color: #334155;
+}
+
+html[data-theme='dark'] .score-pill {
+  background-color: #334155;
+}
+
+html[data-theme='dark'] .btn-banned-toggle {
+  color: #cbd5e1;
+  border-color: #475569;
+}

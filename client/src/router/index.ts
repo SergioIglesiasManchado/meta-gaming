@@ -6,6 +6,10 @@ import DashboardView from '../views/DashboardView.vue';
 import GamesView from '../views/GamesView.vue';
 import GameDetailView from '../views/GameDetailView.vue';
 import CommunityView from '../views/CommunityView.vue';
+import ProfileView from '../views/ProfileView.vue';
+import CollectionsView from '../views/CollectionsView.vue';
+import CollectionDetailView from '../views/CollectionDetailView.vue';
+import ChatView from '../views/ChatView.vue';
 
 export const routes = [
   {
@@ -32,6 +36,28 @@ export const routes = [
     path: '/dashboard',
     name: 'dashboard',
     component: DashboardView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/profile/:id?',
+    name: 'profile',
+    component: ProfileView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/collections',
+    name: 'collections',
+    component: CollectionsView
+  },
+  {
+    path: '/collections/:id',
+    name: 'collection-detail',
+    component: CollectionDetailView
+  },
+  {
+    path: '/chat',
+    name: 'chat',
+    component: ChatView,
     meta: { requiresAuth: true }
   },
   {

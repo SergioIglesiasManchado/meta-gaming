@@ -5,6 +5,8 @@ import { useCommunityStore } from '../stores/community';
 import { useAuthStore } from '../stores/auth';
 import CommentItem from '../components/CommentItem.vue';
 
+import type { PostType } from '../types/community';
+
 const route = useRoute();
 const router = useRouter();
 const communityStore = useCommunityStore();
@@ -15,10 +17,20 @@ const gameId = computed(() => parseInt(route.params.id as string, 10));
 const selectedPostId = ref<number | null>(null);
 const showNewQuestionForm = ref(false);
 
-// New question form state
-const newQuestion = ref({
+const activeTypeFilter = ref<string>('all');
+const activeSort = ref<'newest' | 'upvotes'>('newest');
+
+// New post form state
+const newQuestion = ref<{
+  title: string;
+  content: string;
+  post_type: PostType;
+  media_url: string;
+}>({
   title: '',
-  content: ''
+  content: '',
+  post_type: 'question',
+  media_url: '',
 });
 const isSubmittingQuestion = ref(false);
 const questionError = ref<string | null>(null);
@@ -28,6 +40,16 @@ const topLevelAnswer = ref('');
 const isSubmittingAnswer = ref(false);
 const answerError = ref<string | null>(null);
 
+const loadPosts = async () => {
+  if (communityStore.currentCommunity) {
+    await communityStore.fetchCommunityPosts(
+      communityStore.currentCommunity.id,
+      activeTypeFilter.value,
+      activeSort.value
+    );
+  }
+};
+
 onMounted(async () => {
   if (isNaN(gameId.value)) {
     router.push('/games');
@@ -36,9 +58,32 @@ onMounted(async () => {
 
   const community = await communityStore.fetchCommunityByGameId(gameId.value);
   if (community) {
-    await communityStore.fetchCommunityPosts(community.id);
+    await loadPosts();
   }
 });
+
+const handleFilterChange = async (type: string) => {
+  activeTypeFilter.value = type;
+  await loadPosts();
+};
+
+const handleSortChange = async (sort: 'newest' | 'upvotes') => {
+  activeSort.value = sort;
+  await loadPosts();
+};
+
+const handleToggleUpvote = async (postId: number, event?: MouseEvent) => {
+  if (event) event.stopPropagation();
+  if (!authStore.isAuthenticated) {
+    router.push('/login');
+    return;
+  }
+  try {
+    await communityStore.togglePostReaction(postId);
+  } catch (err: any) {
+    alert(err.message || 'Error updating upvote');
+  }
+};
 
 const formatDate = (isoString: string) => {
   const date = new Date(isoString);
@@ -67,11 +112,15 @@ const handleCreateQuestion = async () => {
     const post = await communityStore.createPost(
       communityStore.currentCommunity.id,
       newQuestion.value.title.trim(),
-      newQuestion.value.content.trim()
+      newQuestion.value.content.trim(),
+      newQuestion.value.post_type,
+      newQuestion.value.media_url.trim() || undefined
     );
 
     newQuestion.value.title = '';
     newQuestion.value.content = '';
+    newQuestion.value.post_type = 'question';
+    newQuestion.value.media_url = '';
     showNewQuestionForm.value = false;
 
     // Open newly created question
@@ -92,9 +141,7 @@ const openPost = async (postId: number) => {
 
 const closePost = async () => {
   selectedPostId.value = null;
-  if (communityStore.currentCommunity) {
-    await communityStore.fetchCommunityPosts(communityStore.currentCommunity.id);
-  }
+  await loadPosts();
 };
 
 const submitTopLevelAnswer = async () => {
@@ -193,14 +240,33 @@ const submitTopLevelAnswer = async () => {
         <!-- Question Original Post -->
         <div class="question-main card">
           <div class="question-meta">
-            <span class="author-badge">👤 {{ communityStore.currentPost.username }}</span>
+            <div class="meta-left">
+              <span class="type-pill" :class="communityStore.currentPost.post_type">
+                {{ communityStore.currentPost.post_type }}
+              </span>
+              <router-link :to="'/profile/' + communityStore.currentPost.user_id" class="author-badge" title="View gamer profile">
+                👤 {{ communityStore.currentPost.username }}
+              </router-link>
+            </div>
             <span class="meta-date">{{ formatDate(communityStore.currentPost.created_at) }}</span>
           </div>
 
           <h2 class="question-title">{{ communityStore.currentPost.title }}</h2>
+
+          <div v-if="communityStore.currentPost.media_url" class="post-media-wrap">
+            <img :src="communityStore.currentPost.media_url" alt="" class="post-media-img" />
+          </div>
+
           <div class="question-body">{{ communityStore.currentPost.content }}</div>
 
           <div class="question-footer">
+            <button
+              class="btn-upvote"
+              :class="{ 'upvoted': communityStore.currentPost.has_upvoted }"
+              @click="handleToggleUpvote(communityStore.currentPost.id)"
+            >
+              ▲ {{ communityStore.currentPost.upvotes_count || 0 }}
+            </button>
             <span class="answers-count">
               💬 {{ communityStore.currentComments.length }} {{ communityStore.currentComments.length === 1 ? 'answer / reply' : 'answers / replies' }}
             </span>
@@ -265,24 +331,46 @@ const submitTopLevelAnswer = async () => {
           <div v-if="questionError" class="alert alert-danger">{{ questionError }}</div>
 
           <form class="question-form" @submit.prevent="handleCreateQuestion">
+            <div class="form-row-2">
+              <div class="form-group flex-2">
+                <label for="q-title">Topic Title *</label>
+                <input
+                  id="q-title"
+                  v-model="newQuestion.title"
+                  type="text"
+                  placeholder="e.g. Best strategy for beating the optional boss"
+                  required
+                />
+              </div>
+
+              <div class="form-group flex-1">
+                <label for="q-type">Post Type</label>
+                <select id="q-type" v-model="newQuestion.post_type" class="form-select">
+                  <option value="question">❓ Question</option>
+                  <option value="discussion">💬 Discussion</option>
+                  <option value="guide">📖 Guide</option>
+                  <option value="screenshot">📸 Screenshot</option>
+                </select>
+              </div>
+            </div>
+
             <div class="form-group">
-              <label for="q-title">Question / Topic Title</label>
+              <label for="q-media">Media / Screenshot Image URL (Optional)</label>
               <input
-                id="q-title"
-                v-model="newQuestion.title"
-                type="text"
-                placeholder="e.g. How do I beat the boss in Area 3?"
-                required
+                id="q-media"
+                v-model="newQuestion.media_url"
+                type="url"
+                placeholder="https://example.com/screenshot.jpg"
               />
             </div>
 
             <div class="form-group">
-              <label for="q-content">Details / Explanation</label>
+              <label for="q-content">Details / Explanation *</label>
               <textarea
                 id="q-content"
                 v-model="newQuestion.content"
                 rows="4"
-                placeholder="Provide details about your question or context..."
+                placeholder="Provide details about your question, guide, or thoughts..."
                 required
               ></textarea>
             </div>
@@ -300,7 +388,7 @@ const submitTopLevelAnswer = async () => {
                 class="btn btn-accent"
                 :disabled="isSubmittingQuestion"
               >
-                {{ isSubmittingQuestion ? 'Posting...' : 'Post Question' }}
+                {{ isSubmittingQuestion ? 'Posting...' : 'Post to Community' }}
               </button>
             </div>
           </form>
@@ -309,8 +397,63 @@ const submitTopLevelAnswer = async () => {
         <!-- Posts List -->
         <div class="posts-list-section">
           <div class="section-top">
-            <h2>Community Questions &amp; Discussions</h2>
-            <span class="count-tag">{{ communityStore.posts.length }} discussions</span>
+            <div>
+              <h2>Community Posts &amp; Discussions</h2>
+              <span class="count-tag">{{ communityStore.posts.length }} posts</span>
+            </div>
+
+            <!-- Sort Controls -->
+            <div class="sort-controls">
+              <label for="sort-select">Sort by:</label>
+              <select
+                id="sort-select"
+                :value="activeSort"
+                @change="handleSortChange(($event.target as HTMLSelectElement).value as any)"
+                class="sort-dropdown"
+              >
+                <option value="newest">🕒 Newest</option>
+                <option value="upvotes">🔥 Most Upvoted</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Filter Pills -->
+          <div class="filter-pills-bar">
+            <button
+              class="pill-btn"
+              :class="{ active: activeTypeFilter === 'all' }"
+              @click="handleFilterChange('all')"
+            >
+              All
+            </button>
+            <button
+              class="pill-btn"
+              :class="{ active: activeTypeFilter === 'question' }"
+              @click="handleFilterChange('question')"
+            >
+              ❓ Questions
+            </button>
+            <button
+              class="pill-btn"
+              :class="{ active: activeTypeFilter === 'discussion' }"
+              @click="handleFilterChange('discussion')"
+            >
+              💬 Discussions
+            </button>
+            <button
+              class="pill-btn"
+              :class="{ active: activeTypeFilter === 'guide' }"
+              @click="handleFilterChange('guide')"
+            >
+              📖 Guides
+            </button>
+            <button
+              class="pill-btn"
+              :class="{ active: activeTypeFilter === 'screenshot' }"
+              @click="handleFilterChange('screenshot')"
+            >
+              📸 Screenshots
+            </button>
           </div>
 
           <div v-if="communityStore.loading" class="loading-state card">
@@ -319,7 +462,7 @@ const submitTopLevelAnswer = async () => {
 
           <div v-else-if="communityStore.posts.length === 0" class="empty-state card">
             <h3>No questions yet</h3>
-            <p>Nobody has asked a question in this community yet.</p>
+            <p>Nobody has asked a question or posted in this community yet.</p>
             <button
               v-if="authStore.isAuthenticated"
               class="btn btn-accent btn-mt"
@@ -337,14 +480,30 @@ const submitTopLevelAnswer = async () => {
               @click="openPost(post.id)"
             >
               <div class="post-card-header">
-                <span class="post-author">👤 {{ post.username }}</span>
+                <div class="header-tags">
+                  <span class="type-pill" :class="post.post_type">{{ post.post_type }}</span>
+                  <router-link :to="'/profile/' + post.user_id" class="post-author" @click.stop title="View gamer profile">
+                    👤 {{ post.username }}
+                  </router-link>
+                </div>
                 <span class="post-date">{{ formatDate(post.created_at) }}</span>
+              </div>
+
+              <div v-if="post.media_url" class="post-thumb-wrap">
+                <img :src="post.media_url" alt="" class="post-thumb-img" loading="lazy" />
               </div>
 
               <h3 class="post-title">{{ post.title }}</h3>
               <p class="post-preview">{{ post.content }}</p>
 
               <div class="post-card-footer">
+                <button
+                  class="btn-upvote"
+                  :class="{ 'upvoted': post.has_upvoted }"
+                  @click.stop="handleToggleUpvote(post.id, $event)"
+                >
+                  ▲ {{ post.upvotes_count || 0 }}
+                </button>
                 <span class="comments-badge">
                   💬 {{ post.comments_count }} {{ post.comments_count === 1 ? 'answer' : 'answers' }}
                 </span>
@@ -515,6 +674,13 @@ const submitTopLevelAnswer = async () => {
   font-weight: 700;
   color: #60a5fa;
   font-size: 0.9rem;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.author-badge:hover {
+  color: #93c5fd;
+  text-decoration: underline;
 }
 
 .meta-date {
@@ -715,6 +881,13 @@ const submitTopLevelAnswer = async () => {
   font-weight: 700;
   color: #60a5fa;
   font-size: 0.85rem;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.post-author:hover {
+  color: #93c5fd;
+  text-decoration: underline;
 }
 
 .post-date {
@@ -841,6 +1014,159 @@ const submitTopLevelAnswer = async () => {
   color: #94a3b8;
 }
 
+.form-row-2 {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.flex-2 {
+  flex: 2 1 250px;
+}
+
+.flex-1 {
+  flex: 1 1 150px;
+}
+
+.form-select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #f8fafc;
+}
+
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.sort-dropdown {
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #f8fafc;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+}
+
+.filter-pills-bar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.pill-btn {
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #94a3b8;
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.825rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pill-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.pill-btn.active {
+  background: #8b5cf6;
+  border-color: #8b5cf6;
+  color: #ffffff;
+}
+
+.type-pill {
+  padding: 0.15rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-right: 0.5rem;
+}
+
+.type-pill.question {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.type-pill.discussion {
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+.type-pill.guide {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.type-pill.screenshot {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.btn-upvote {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #94a3b8;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.825rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-upvote:hover {
+  background: rgba(139, 92, 246, 0.2);
+  color: #c084fc;
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+.btn-upvote.upvoted {
+  background: #8b5cf6;
+  border-color: #8b5cf6;
+  color: #ffffff;
+}
+
+.post-media-wrap {
+  margin: 1rem 0;
+  border-radius: 8px;
+  overflow: hidden;
+  max-height: 400px;
+}
+
+.post-media-img {
+  width: 100%;
+  max-height: 400px;
+  object-fit: contain;
+  background: #000;
+}
+
+.post-thumb-wrap {
+  margin: 0.5rem 0;
+  border-radius: 6px;
+  overflow: hidden;
+  height: 140px;
+}
+
+.post-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 /* Mobile responsive */
 @media (max-width: 640px) {
   .community-header {
@@ -868,6 +1194,18 @@ const submitTopLevelAnswer = async () => {
 
   .form-actions .btn {
     width: 100%;
+  }
+
+  .post-type-filters {
+    overflow-x: auto;
+    width: 100%;
+    padding-bottom: 0.5rem;
+    flex-wrap: nowrap;
+  }
+
+  .pill-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 }
 </style>

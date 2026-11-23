@@ -5,6 +5,9 @@ import { authRouter } from './auth.routes.js';
 import { userRouter } from './user.routes.js';
 import gameRouter from './game.routes.js';
 import communityRouter from './community.routes.js';
+import { collectionRouter } from './collection.routes.js';
+import { socialRouter } from './social.routes.js';
+import { chatRouter } from './chat.routes.js';
 
 export const rootRouter = Router();
 
@@ -26,3 +29,12 @@ rootRouter.use('/v1/games', gameRouter);
 
 rootRouter.use('/api/v1/communities', communityRouter);
 rootRouter.use('/v1/communities', communityRouter);
+
+rootRouter.use('/api/v1/collections', collectionRouter);
+rootRouter.use('/v1/collections', collectionRouter);
+
+rootRouter.use('/api/v1/social', socialRouter);
+rootRouter.use('/v1/social', socialRouter);
+
+rootRouter.use('/api/v1/chats', chatRouter);
+rootRouter.use('/v1/chats', chatRouter);

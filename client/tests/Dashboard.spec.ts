@@ -5,6 +5,7 @@ import DashboardView from '../src/views/DashboardView.vue';
 import LoginView from '../src/views/LoginView.vue';
 import RegisterView from '../src/views/RegisterView.vue';
 import { useAuthStore } from '../src/stores/auth';
+import { useProfileStore } from '../src/stores/profile';
 import { router } from '../src/router/index';
 
 describe('Auth Views & Dashboard Feature', () => {
@@ -26,7 +27,11 @@ describe('Auth Views & Dashboard Feature', () => {
       'fake_user_token'
     );
 
-    const wrapper = mount(DashboardView);
+    const wrapper = mount(DashboardView, {
+      global: {
+        plugins: [router]
+      }
+    });
 
     expect(wrapper.text()).toContain('Welcome, RetroPlayer!');
     expect(wrapper.text()).toContain('🎮 Gamer');
@@ -34,6 +39,51 @@ describe('Auth Views & Dashboard Feature', () => {
     expect(wrapper.find('[data-testid="admin-dashboard"]').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('Administrator Control Center');
     expect(wrapper.find('[data-testid="user-management"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('My Library & Playtime Tracker');
+    expect(wrapper.text()).toContain('Friends & Gamer Social');
+    expect(wrapper.find('input[placeholder*="Search by username"]').exists()).toBe(true);
+  });
+
+  it('renders tracked games in dashboard when user has games in library', () => {
+    const authStore = useAuthStore();
+    authStore.setAuth(
+      {
+        id: 42,
+        username: 'RetroPlayer',
+        email: 'retro@example.com',
+        role: 'user',
+        is_admin: false,
+        created_at: '2026-01-15T00:00:00.000Z'
+      },
+      'fake_user_token'
+    );
+
+    const profileStore = useProfileStore();
+    profileStore.library = [
+      {
+        id: 1,
+        user_id: 42,
+        game_id: 10,
+        game_title: 'Chrono Trigger',
+        hours_played: 35,
+        status: 'completed',
+        platform: 'SNES',
+        personal_score: 10,
+        created_at: '2026-01-01',
+        updated_at: '2026-01-02'
+      }
+    ];
+
+    const wrapper = mount(DashboardView, {
+      global: {
+        plugins: [router]
+      }
+    });
+
+    expect(wrapper.text()).toContain('Chrono Trigger');
+    expect(wrapper.text()).toContain('35 hrs');
+    expect(wrapper.text()).toContain('Completed');
+    expect(wrapper.text()).toContain('★ 10/10');
   });
 
   it('renders Admin dashboard with platform metrics, user management, and official collections', () => {
@@ -50,7 +100,11 @@ describe('Auth Views & Dashboard Feature', () => {
       'fake_admin_token'
     );
 
-    const wrapper = mount(DashboardView);
+    const wrapper = mount(DashboardView, {
+      global: {
+        plugins: [router]
+      }
+    });
 
     expect(wrapper.text()).toContain('Welcome, MasterAdmin!');
     expect(wrapper.text()).toContain('🛡️ Administrator');
