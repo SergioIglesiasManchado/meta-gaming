@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useGamesStore } from '../stores/games';
 import { useAuthStore } from '../stores/auth';
 import { useProfileStore } from '../stores/profile';
+import { useCollectionStore } from '../stores/collection';
 import type { TrackStatus } from '../types/tracker';
 
 const route = useRoute();
@@ -11,6 +12,7 @@ const router = useRouter();
 const gamesStore = useGamesStore();
 const authStore = useAuthStore();
 const profileStore = useProfileStore();
+const collectionStore = useCollectionStore();
 
 const gameId = computed(() => parseInt(route.params.id as string, 10));
 
@@ -20,6 +22,11 @@ const isSubmittingReview = ref(false);
 const isTogglingFollow = ref(false);
 const reviewSuccess = ref<string | null>(null);
 const reviewError = ref<string | null>(null);
+
+// Collection add modal state
+const isAddToColModalOpen = ref(false);
+const selectedColId = ref<number | ''>('');
+const colAddSuccess = ref('');
 
 // Game tracking state
 const trackStatus = ref<TrackStatus>('want_to_play');
@@ -112,6 +119,29 @@ const handleRemoveTrack = async () => {
   }
 };
 
+const openAddToCollection = async () => {
+  if (!authStore.isAuthenticated) {
+    router.push('/login');
+    return;
+  }
+  await collectionStore.fetchCollections();
+  isAddToColModalOpen.value = true;
+};
+
+const handleAddGameToSelectedCol = async () => {
+  if (!selectedColId.value) return;
+  try {
+    await collectionStore.addGameToCollection(Number(selectedColId.value), gameId.value);
+    colAddSuccess.value = 'Game added to collection!';
+    setTimeout(() => {
+      colAddSuccess.value = '';
+      isAddToColModalOpen.value = false;
+    }, 1200);
+  } catch (err: any) {
+    alert(err.message || 'Error adding game to collection');
+  }
+};
+
 const handleToggleFollow = async () => {
   if (!authStore.isAuthenticated) {
     router.push('/login');
@@ -197,6 +227,12 @@ const formatDate = (isoStr: string) => {
                 @click="router.push(`/games/${gameId}/community`)"
               >
                 👥 Community Hub
+              </button>
+              <button
+                class="btn-community-nav"
+                @click="openAddToCollection"
+              >
+                📁 Add to Collection
               </button>
               <button
                 class="btn-follow"
@@ -448,6 +484,47 @@ const formatDate = (isoStr: string) => {
               <p class="review-body">{{ rev.comment }}</p>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add to Collection Modal -->
+    <div v-if="isAddToColModalOpen" class="modal-backdrop" @click.self="isAddToColModalOpen = false">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Add to Collection</h3>
+          <button @click="isAddToColModalOpen = false" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p v-if="colAddSuccess" class="alert alert-success">{{ colAddSuccess }}</p>
+          <div v-if="collectionStore.collections.length > 0" class="form-group">
+            <label for="select-collection">Choose a Collection:</label>
+            <select id="select-collection" v-model="selectedColId" class="form-select">
+              <option value="">Select a collection</option>
+              <option
+                v-for="col in collectionStore.collections"
+                :key="col.id"
+                :value="col.id"
+              >
+                {{ col.title }} ({{ col.is_official ? 'Official' : 'Custom' }})
+              </option>
+            </select>
+          </div>
+          <p v-else class="empty-col-msg">
+            You don't have any collections yet.
+            <router-link to="/collections">Create a collection first</router-link>
+          </p>
+        </div>
+        <div class="modal-actions">
+          <button @click="isAddToColModalOpen = false" class="btn btn-ctrl">Cancel</button>
+          <button
+            v-if="collectionStore.collections.length > 0"
+            @click="handleAddGameToSelectedCol"
+            class="btn btn-primary"
+            :disabled="!selectedColId"
+          >
+            Add Game
+          </button>
         </div>
       </div>
     </div>

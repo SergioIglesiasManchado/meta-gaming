@@ -83,6 +83,7 @@ onUnmounted(() => {
         <!-- Desktop nav -->
         <div class="nav-links desktop-nav">
           <router-link to="/games" class="nav-link">Videogames</router-link>
+          <router-link to="/collections" class="nav-link">Collections</router-link>
           <template v-if="isAuthenticated">
             <router-link to="/dashboard" class="nav-link">Dashboard</router-link>
             <router-link to="/profile" class="nav-link">Profile</router-link>
@@ -156,6 +157,7 @@ onUnmounted(() => {
       <!-- Mobile dropdown -->
       <div v-if="isMobileMenuOpen" class="mobile-menu">
         <router-link to="/games" class="mobile-link" @click="closeMenu">🎮 Videogames</router-link>
+        <router-link to="/collections" class="mobile-link" @click="closeMenu">📁 Collections</router-link>
         <template v-if="isAuthenticated">
           <router-link to="/dashboard" class="mobile-link" @click="closeMenu">📊 Dashboard</router-link>
           <router-link to="/profile" class="mobile-link" @click="closeMenu">👤 Profile</router-link>
