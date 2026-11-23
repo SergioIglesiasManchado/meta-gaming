@@ -511,8 +511,8 @@ onMounted(async () => {
 }
 
 .tab-btn.active {
-  background: #eef2ff;
-  color: #4f46e5;
+  background: var(--chat-tab-active-bg, #eef2ff);
+  color: var(--chat-tab-active-color, #4f46e5);
 }
 
 .unread-badge,
@@ -546,14 +546,15 @@ onMounted(async () => {
 }
 
 .conv-item.active {
-  background: #f0f4ff;
+  background: var(--chat-conv-active-bg, #f0f4ff);
 }
 
 .conv-avatar {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: #e0e7ff;
+  background: var(--chat-avatar-bg, #e0e7ff);
+  color: var(--chat-avatar-color, #4f46e5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -613,8 +614,9 @@ onMounted(async () => {
 
 .request-item {
   padding: 0.75rem 1rem;
-  background: #fefce8;
-  border-bottom: 1px solid #fef08a;
+  background: var(--chat-request-bg, #fefce8);
+  border-bottom: 1px solid var(--chat-request-border, #fef08a);
+  color: var(--chat-request-text, #713f12);
 }
 
 .req-user {
@@ -694,8 +696,8 @@ onMounted(async () => {
 
 .btn-chat-friend {
   background: transparent;
-  border: 1px solid #c7d2fe;
-  color: #4f46e5;
+  border: 1px solid var(--border-color, #c7d2fe);
+  color: var(--chat-tab-active-color, #4f46e5);
   padding: 0.35rem 0.75rem;
   border-radius: 6px;
   font-size: 0.8rem;
@@ -704,7 +706,7 @@ onMounted(async () => {
 }
 
 .btn-chat-friend:hover {
-  background: #eef2ff;
+  background: var(--hover-bg, #eef2ff);
 }
 
 /* Friend Search inside Chat Sidebar */
@@ -793,7 +795,7 @@ onMounted(async () => {
 
 .view-profile-sm {
   font-size: 0.75rem;
-  color: #6366f1;
+  color: var(--chat-tab-active-color, #6366f1);
   text-decoration: none;
 }
 
@@ -819,13 +821,13 @@ onMounted(async () => {
 }
 
 .tag-status.pending {
-  background: #fef3c7;
-  color: #b45309;
+  background: var(--chat-tag-pending-bg, #fef3c7);
+  color: var(--chat-tag-pending-text, #b45309);
 }
 
 .tag-status.friend {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--chat-tag-friend-bg, #d1fae5);
+  color: var(--chat-tag-friend-text, #065f46);
 }
 
 /* Chat Main Pane */
@@ -881,8 +883,8 @@ onMounted(async () => {
   max-width: 65%;
   padding: 0.75rem 1rem;
   border-radius: 12px;
-  background: var(--card-inner-bg, #f3f4f6);
-  color: var(--text-color, #111827);
+  background: var(--chat-incoming-bubble-bg, #f3f4f6);
+  color: var(--chat-incoming-bubble-text, #111827);
 }
 
 .message-row.mine .msg-bubble {
@@ -900,7 +902,7 @@ onMounted(async () => {
 .author-name {
   font-size: 0.75rem;
   font-weight: 700;
-  color: #4f46e5;
+  color: var(--chat-author-color, #4f46e5);
 }
 
 .msg-time,
@@ -923,6 +925,7 @@ onMounted(async () => {
 .chat-input-bar {
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--border-color, #e5e7eb);
+  background: var(--card-bg, #ffffff);
   display: flex;
   gap: 0.75rem;
 }
@@ -972,7 +975,7 @@ onMounted(async () => {
 .btn-link {
   background: transparent;
   border: none;
-  color: #4f46e5;
+  color: var(--chat-author-color, #4f46e5);
   font-weight: 600;
   cursor: pointer;
   text-decoration: underline;
@@ -994,6 +997,8 @@ onMounted(async () => {
 
 .modal-card {
   background: var(--card-bg, #ffffff);
+  color: var(--text-color, #111827);
+  border: 1px solid var(--border-color, #e5e7eb);
   padding: 2rem;
   border-radius: 14px;
   width: 90%;
@@ -1031,6 +1036,8 @@ onMounted(async () => {
   padding: 0.6rem 0.85rem;
   border: 1px solid var(--border-color, #d1d5db);
   border-radius: 8px;
+  background: var(--input-bg, #ffffff);
+  color: var(--text-color, #111827);
   box-sizing: border-box;
 }
 
@@ -1044,6 +1051,7 @@ onMounted(async () => {
 .btn-cancel {
   background: transparent;
   border: 1px solid var(--border-color, #d1d5db);
+  color: var(--text-color, #111827);
   padding: 0.5rem 1rem;
   border-radius: 6px;
   cursor: pointer;
