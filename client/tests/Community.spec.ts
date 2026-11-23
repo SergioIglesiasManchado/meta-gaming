@@ -197,6 +197,7 @@ describe('Community Frontend Component Battery (Normal, Edge & Error Cases)', ()
           username: 'tarnished_99',
           title: 'How to defeat Margit?',
           content: 'He keeps delaying his attacks!',
+          post_type: 'question',
           created_at: '2026-01-01',
           updated_at: '2026-01-01',
           comments_count: 3
@@ -238,6 +239,7 @@ describe('Community Frontend Component Battery (Normal, Edge & Error Cases)', ()
           username: 'tarnished_99',
           title: 'How to defeat Margit?',
           content: 'He keeps delaying his attacks!',
+          post_type: 'question',
           created_at: '2026-01-01',
           updated_at: '2026-01-01',
           comments_count: 1
@@ -288,18 +290,20 @@ describe('Community Frontend Component Battery (Normal, Edge & Error Cases)', ()
         updated_at: '2026-01-01'
       };
 
-      communityStore.currentPost = {
+      const mockPost = {
         id: 101,
         community_id: 1,
         user_id: 5,
         username: 'tarnished_99',
         title: 'Question for all',
         content: 'Test content',
+        post_type: 'question' as const,
         created_at: '2026-01-01',
         updated_at: '2026-01-01',
         comments_count: 0
       };
-      communityStore.posts = [communityStore.currentPost];
+      communityStore.currentPost = mockPost;
+      communityStore.posts = [mockPost];
       communityStore.currentComments = [];
 
       router.push('/games/42/community');
