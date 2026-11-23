@@ -467,4 +467,26 @@ const handleRemoveGame = async (gameId: number) => {
   text-decoration: none;
   display: inline-block;
 }
+
+@media (max-width: 640px) {
+  .col-detail-container {
+    padding: 1.25rem 0.75rem;
+  }
+  .banner-card {
+    padding: 1.25rem;
+  }
+  .banner-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .banner-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .games-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

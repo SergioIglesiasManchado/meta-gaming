@@ -558,4 +558,30 @@ const handleCreateCollection = async () => {
   font-size: 0.875rem;
   margin-bottom: 1rem;
 }
+
+@media (max-width: 640px) {
+  .collections-container {
+    padding: 1.25rem 0.75rem;
+  }
+  .collections-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  .controls-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  .search-wrap {
+    width: 100%;
+  }
+  .search-input {
+    flex: 1;
+    width: 100%;
+  }
+  .collections-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

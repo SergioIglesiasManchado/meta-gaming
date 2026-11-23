@@ -1177,5 +1177,17 @@ const submitTopLevelAnswer = async () => {
   .form-actions .btn {
     width: 100%;
   }
+
+  .post-type-filters {
+    overflow-x: auto;
+    width: 100%;
+    padding-bottom: 0.5rem;
+    flex-wrap: nowrap;
+  }
+
+  .pill-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
 }
 </style>

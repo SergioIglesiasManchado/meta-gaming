@@ -1152,5 +1152,12 @@ const formatDate = (isoStr: string) => {
   .score-card {
     width: 100%;
   }
+  .tracker-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tracker-actions .btn {
+    width: 100%;
+  }
 }
 </style>
