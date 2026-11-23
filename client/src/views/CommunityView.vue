@@ -244,7 +244,9 @@ const submitTopLevelAnswer = async () => {
               <span class="type-pill" :class="communityStore.currentPost.post_type">
                 {{ communityStore.currentPost.post_type }}
               </span>
-              <span class="author-badge">👤 {{ communityStore.currentPost.username }}</span>
+              <router-link :to="'/profile/' + communityStore.currentPost.user_id" class="author-badge" title="View gamer profile">
+                👤 {{ communityStore.currentPost.username }}
+              </router-link>
             </div>
             <span class="meta-date">{{ formatDate(communityStore.currentPost.created_at) }}</span>
           </div>
@@ -480,7 +482,9 @@ const submitTopLevelAnswer = async () => {
               <div class="post-card-header">
                 <div class="header-tags">
                   <span class="type-pill" :class="post.post_type">{{ post.post_type }}</span>
-                  <span class="post-author">👤 {{ post.username }}</span>
+                  <router-link :to="'/profile/' + post.user_id" class="post-author" @click.stop title="View gamer profile">
+                    👤 {{ post.username }}
+                  </router-link>
                 </div>
                 <span class="post-date">{{ formatDate(post.created_at) }}</span>
               </div>
@@ -670,6 +674,13 @@ const submitTopLevelAnswer = async () => {
   font-weight: 700;
   color: #60a5fa;
   font-size: 0.9rem;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.author-badge:hover {
+  color: #93c5fd;
+  text-decoration: underline;
 }
 
 .meta-date {
@@ -870,6 +881,13 @@ const submitTopLevelAnswer = async () => {
   font-weight: 700;
   color: #60a5fa;
   font-size: 0.85rem;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.post-author:hover {
+  color: #93c5fd;
+  text-decoration: underline;
 }
 
 .post-date {

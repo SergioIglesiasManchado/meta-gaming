@@ -64,7 +64,9 @@ const submitReply = async () => {
   <div class="comment-thread" :class="{ 'nested-thread': depth > 0 }">
     <div class="comment-card">
       <div class="comment-header">
-        <span class="comment-author">👤 {{ comment.username }}</span>
+        <router-link :to="'/profile/' + comment.user_id" class="comment-author" title="View gamer profile">
+          👤 {{ comment.username }}
+        </router-link>
         <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
       </div>
 
@@ -153,6 +155,13 @@ const submitReply = async () => {
   font-weight: 700;
   color: #c084fc;
   font-size: 0.95rem;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.comment-author:hover {
+  color: #e9d5ff;
+  text-decoration: underline;
 }
 
 .comment-date {

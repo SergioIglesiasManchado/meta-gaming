@@ -19,7 +19,8 @@ describe('Community Frontend Component Battery (Normal, Edge & Error Cases)', ()
         { path: '/games/:id/community', component: CommunityView },
         { path: '/games/:id', component: { template: '<div>Game</div>' } },
         { path: '/games', component: { template: '<div>Games</div>' } },
-        { path: '/login', component: { template: '<div>Login</div>' } }
+        { path: '/login', component: { template: '<div>Login</div>' } },
+        { path: '/profile/:id', component: { template: '<div>Profile</div>' } }
       ]
     });
   });
@@ -73,6 +74,9 @@ describe('Community Frontend Component Battery (Normal, Edge & Error Cases)', ()
           comment: mockComment,
           postId: 1,
           depth: 0
+        },
+        global: {
+          plugins: [router]
         }
       });
 
@@ -109,6 +113,9 @@ describe('Community Frontend Component Battery (Normal, Edge & Error Cases)', ()
           comment: mockComment,
           postId: 1,
           depth: 0
+        },
+        global: {
+          plugins: [router]
         }
       });
 
@@ -142,6 +149,9 @@ describe('Community Frontend Component Battery (Normal, Edge & Error Cases)', ()
           comment: mockComment,
           postId: 1,
           depth: 0
+        },
+        global: {
+          plugins: [router]
         }
       });
 
@@ -170,6 +180,9 @@ describe('Community Frontend Component Battery (Normal, Edge & Error Cases)', ()
           comment: mockComment,
           postId: 1,
           depth: 0
+        },
+        global: {
+          plugins: [router]
         }
       });
 

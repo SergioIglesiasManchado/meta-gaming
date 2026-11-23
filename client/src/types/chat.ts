@@ -8,6 +8,15 @@ export interface Friend {
   bio?: string;
 }
 
+export interface SearchedGamer {
+  user_id: number;
+  username: string;
+  role: string;
+  avatar_url?: string;
+  bio?: string;
+  friendship_status: 'none' | 'pending_sent' | 'pending_received' | 'accepted';
+}
+
 export interface FriendRequest {
   id: number;
   requester_id?: number;

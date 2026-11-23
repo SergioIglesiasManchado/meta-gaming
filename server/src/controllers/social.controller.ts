@@ -116,4 +116,24 @@ export class SocialController {
       res.status(500).json({ status: 'error', message: error.message || 'Server error' });
     }
   }
+
+  static async searchGamers(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ status: 'error', message: 'Authentication required' });
+        return;
+      }
+
+      const q = typeof req.query.q === 'string' ? req.query.q : '';
+      const gamers = await SocialService.searchGamers(userId, q);
+
+      res.status(200).json({
+        status: 'success',
+        data: gamers,
+      });
+    } catch (error: any) {
+      res.status(500).json({ status: 'error', message: error.message || 'Error searching gamers' });
+    }
+  }
 }
