@@ -148,6 +148,52 @@ export const initDb = async (): Promise<void> => {
     CREATE INDEX IF NOT EXISTS idx_collection_games_collection_id ON collection_games(collection_id);
     CREATE INDEX IF NOT EXISTS idx_collection_games_game_id ON collection_games(game_id);
 
+    CREATE TABLE IF NOT EXISTS friendships (
+      id SERIAL PRIMARY KEY,
+      requester_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      addressee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status VARCHAR(20) NOT NULL CHECK (status IN ('pending', 'accepted', 'declined')),
+      created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+      CONSTRAINT unique_friendship UNIQUE (requester_id, addressee_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_friendships_requester ON friendships(requester_id);
+    CREATE INDEX IF NOT EXISTS idx_friendships_addressee ON friendships(addressee_id);
+    CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status);
+
+    CREATE TABLE IF NOT EXISTS chat_conversations (
+      id SERIAL PRIMARY KEY,
+      is_group BOOLEAN NOT NULL DEFAULT FALSE,
+      title VARCHAR(255) DEFAULT '',
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS chat_participants (
+      id SERIAL PRIMARY KEY,
+      conversation_id INTEGER NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      joined_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+      last_read_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+      CONSTRAINT unique_conv_participant UNIQUE (conversation_id, user_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_chat_participants_conv ON chat_participants(conversation_id);
+    CREATE INDEX IF NOT EXISTS idx_chat_participants_user ON chat_participants(user_id);
+
+    CREATE TABLE IF NOT EXISTS chat_messages (
+      id SERIAL PRIMARY KEY,
+      conversation_id INTEGER NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+      sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_chat_messages_conv ON chat_messages(conversation_id);
+    CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(created_at);
+
     INSERT INTO communities (game_id, name, description)
     SELECT id, title, description
     FROM games

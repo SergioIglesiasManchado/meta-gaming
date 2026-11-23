@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useProfileStore } from '../stores/profile';
+import { useSocialStore } from '../stores/social';
 import type { TrackStatus } from '../types/tracker';
 
 const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 const profileStore = useProfileStore();
+const socialStore = useSocialStore();
 
 const activeStatusFilter = ref<string>('all');
 const searchQuery = ref<string>('');
@@ -16,6 +19,9 @@ const editBio = ref<string>('');
 const editAvatar = ref<string>('');
 const editPlatforms = ref<string>('');
 const saveMessage = ref<string>('');
+
+const friendshipStatus = ref<'none' | 'pending_sent' | 'pending_received' | 'accepted' | 'declined'>('none');
+const isFriendActionLoading = ref(false);
 
 const currentUserId = computed(() => {
   if (route.params.id) {
@@ -28,6 +34,12 @@ const isOwnProfile = computed(() => {
   return authStore.user?.id === currentUserId.value;
 });
 
+const loadFriendshipStatus = async () => {
+  if (authStore.isAuthenticated && !isOwnProfile.value && currentUserId.value) {
+    friendshipStatus.value = await socialStore.getFriendshipStatus(currentUserId.value);
+  }
+};
+
 const loadProfileData = async () => {
   if (!currentUserId.value) return;
   const p = await profileStore.fetchProfile(currentUserId.value);
@@ -37,6 +49,25 @@ const loadProfileData = async () => {
     editPlatforms.value = p.preferred_platforms.join(', ');
   }
   await loadLibrary();
+  await loadFriendshipStatus();
+};
+
+const handleAddFriend = async () => {
+  if (!authStore.isAuthenticated) {
+    router.push('/login');
+    return;
+  }
+  isFriendActionLoading.value = true;
+  try {
+    await socialStore.sendFriendRequest(currentUserId.value);
+    await loadFriendshipStatus();
+  } finally {
+    isFriendActionLoading.value = false;
+  }
+};
+
+const handleStartChatWithUser = () => {
+  router.push(`/chat?userId=${currentUserId.value}`);
 };
 
 const loadLibrary = async () => {
@@ -172,6 +203,33 @@ const formatStatus = (status: TrackStatus) => {
                 class="btn-edit-profile"
               >
                 {{ isEditingBio ? 'Cancel Editing' : 'Edit Profile' }}
+              </button>
+            </div>
+            <div v-else-if="authStore.isAuthenticated" class="header-actions">
+              <button
+                v-if="friendshipStatus === 'none'"
+                @click="handleAddFriend"
+                class="btn-primary"
+                :disabled="isFriendActionLoading"
+              >
+                + Add Friend
+              </button>
+              <span v-else-if="friendshipStatus === 'pending_sent'" class="status-pill pending">
+                Friend Request Sent
+              </span>
+              <button
+                v-else-if="friendshipStatus === 'pending_received'"
+                @click="handleAddFriend"
+                class="btn-primary"
+              >
+                Accept Friend Request
+              </button>
+              <span v-else-if="friendshipStatus === 'accepted'" class="status-pill friends">
+                ✓ Friends
+              </span>
+
+              <button @click="handleStartChatWithUser" class="btn-chat-action">
+                💬 Message
               </button>
             </div>
           </div>
@@ -476,6 +534,44 @@ const formatStatus = (status: TrackStatus) => {
 
 .btn-edit-profile:hover {
   background: var(--hover-bg, #f3f4f6);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.btn-chat-action {
+  background: transparent;
+  border: 1px solid #6366f1;
+  color: #6366f1;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-chat-action:hover {
+  background: #eef2ff;
+}
+
+.status-pill {
+  padding: 0.4rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.status-pill.pending {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.status-pill.friends {
+  background: #dcfce7;
+  color: #15803d;
 }
 
 .edit-profile-card {

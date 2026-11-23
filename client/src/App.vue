@@ -87,6 +87,7 @@ onUnmounted(() => {
           <template v-if="isAuthenticated">
             <router-link to="/dashboard" class="nav-link">Dashboard</router-link>
             <router-link to="/profile" class="nav-link">Profile</router-link>
+            <router-link to="/chat" class="nav-link">Chat</router-link>
             <span class="user-greeting">
               👤 {{ username }}
               <span v-if="isAdmin" class="admin-tag">Admin</span>
@@ -161,6 +162,7 @@ onUnmounted(() => {
         <template v-if="isAuthenticated">
           <router-link to="/dashboard" class="mobile-link" @click="closeMenu">📊 Dashboard</router-link>
           <router-link to="/profile" class="mobile-link" @click="closeMenu">👤 Profile</router-link>
+          <router-link to="/chat" class="mobile-link" @click="closeMenu">💬 Chat</router-link>
           <div class="mobile-user-info">
             👤 {{ username }}
             <span v-if="isAdmin" class="admin-tag">Admin</span>
