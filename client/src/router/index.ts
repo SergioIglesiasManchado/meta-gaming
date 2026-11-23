@@ -9,6 +9,7 @@ import CommunityView from '../views/CommunityView.vue';
 import ProfileView from '../views/ProfileView.vue';
 import CollectionsView from '../views/CollectionsView.vue';
 import CollectionDetailView from '../views/CollectionDetailView.vue';
+import ChatView from '../views/ChatView.vue';
 
 export const routes = [
   {
@@ -52,6 +53,12 @@ export const routes = [
     path: '/collections/:id',
     name: 'collection-detail',
     component: CollectionDetailView
+  },
+  {
+    path: '/chat',
+    name: 'chat',
+    component: ChatView,
+    meta: { requiresAuth: true }
   },
   {
     path: '/games',
