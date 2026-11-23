@@ -95,6 +95,32 @@ export const initDb = async (): Promise<void> => {
     CREATE INDEX IF NOT EXISTS idx_community_comments_parent_id ON community_comments(parent_comment_id);
     CREATE INDEX IF NOT EXISTS idx_community_comments_user_id ON community_comments(user_id);
 
+    CREATE TABLE IF NOT EXISTS user_profiles (
+      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      bio TEXT DEFAULT '' NOT NULL,
+      avatar_url TEXT DEFAULT '' NOT NULL,
+      preferred_platforms TEXT[] DEFAULT '{}' NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS game_tracks (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+      status VARCHAR(30) NOT NULL CHECK (status IN ('want_to_play', 'playing', 'completed', 'dropped')),
+      hours_played NUMERIC(6, 1) NOT NULL DEFAULT 0 CHECK (hours_played >= 0),
+      platform VARCHAR(50) DEFAULT '' NOT NULL,
+      personal_score NUMERIC(3, 1) CHECK (personal_score IS NULL OR (personal_score >= 0 AND personal_score <= 10)),
+      created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+      CONSTRAINT unique_user_game_track UNIQUE (user_id, game_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_game_tracks_user_id ON game_tracks(user_id);
+    CREATE INDEX IF NOT EXISTS idx_game_tracks_game_id ON game_tracks(game_id);
+    CREATE INDEX IF NOT EXISTS idx_game_tracks_status ON game_tracks(status);
+
     INSERT INTO communities (game_id, name, description)
     SELECT id, title, description
     FROM games

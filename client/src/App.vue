@@ -85,6 +85,7 @@ onUnmounted(() => {
           <router-link to="/games" class="nav-link">Videogames</router-link>
           <template v-if="isAuthenticated">
             <router-link to="/dashboard" class="nav-link">Dashboard</router-link>
+            <router-link to="/profile" class="nav-link">Profile</router-link>
             <span class="user-greeting">
               👤 {{ username }}
               <span v-if="isAdmin" class="admin-tag">Admin</span>
@@ -157,6 +158,7 @@ onUnmounted(() => {
         <router-link to="/games" class="mobile-link" @click="closeMenu">🎮 Videogames</router-link>
         <template v-if="isAuthenticated">
           <router-link to="/dashboard" class="mobile-link" @click="closeMenu">📊 Dashboard</router-link>
+          <router-link to="/profile" class="mobile-link" @click="closeMenu">👤 Profile</router-link>
           <div class="mobile-user-info">
             👤 {{ username }}
             <span v-if="isAdmin" class="admin-tag">Admin</span>

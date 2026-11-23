@@ -3,11 +3,14 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGamesStore } from '../stores/games';
 import { useAuthStore } from '../stores/auth';
+import { useProfileStore } from '../stores/profile';
+import type { TrackStatus } from '../types/tracker';
 
 const route = useRoute();
 const router = useRouter();
 const gamesStore = useGamesStore();
 const authStore = useAuthStore();
+const profileStore = useProfileStore();
 
 const gameId = computed(() => parseInt(route.params.id as string, 10));
 
@@ -17,6 +20,16 @@ const isSubmittingReview = ref(false);
 const isTogglingFollow = ref(false);
 const reviewSuccess = ref<string | null>(null);
 const reviewError = ref<string | null>(null);
+
+// Game tracking state
+const trackStatus = ref<TrackStatus>('want_to_play');
+const trackHours = ref<number>(0);
+const trackPlatform = ref<string>('');
+const trackScore = ref<number | null>(null);
+const isTrackingSubmitting = ref(false);
+const trackFeedback = ref<string>('');
+
+const isTracked = computed(() => !!profileStore.currentTrack);
 
 const userExistingReview = computed(() => {
   if (!authStore.user) return null;
@@ -44,8 +57,60 @@ onMounted(async () => {
   await gamesStore.fetchReviews(gameId.value);
   if (authStore.isAuthenticated) {
     await gamesStore.checkFollowStatus(gameId.value);
+    const existingTrack = await profileStore.fetchGameTrack(gameId.value);
+    if (existingTrack) {
+      trackStatus.value = existingTrack.status;
+      trackHours.value = existingTrack.hours_played;
+      trackPlatform.value = existingTrack.platform;
+      trackScore.value = existingTrack.personal_score;
+    }
   }
 });
+
+const handleSaveTrack = async () => {
+  if (!authStore.isAuthenticated) {
+    router.push('/login');
+    return;
+  }
+  isTrackingSubmitting.value = true;
+  trackFeedback.value = '';
+  try {
+    await profileStore.trackGame(gameId.value, {
+      status: trackStatus.value,
+      hours_played: Number(trackHours.value),
+      platform: trackPlatform.value,
+      personal_score:
+        trackScore.value !== null && trackScore.value !== undefined && trackScore.value !== ('' as any)
+          ? Number(trackScore.value)
+          : null,
+    });
+    trackFeedback.value = 'Game saved to your library!';
+    setTimeout(() => {
+      trackFeedback.value = '';
+    }, 3000);
+  } catch (err: any) {
+    trackFeedback.value = err.message || 'Error tracking game';
+  } finally {
+    isTrackingSubmitting.value = false;
+  }
+};
+
+const handleRemoveTrack = async () => {
+  if (!authStore.isAuthenticated) return;
+  isTrackingSubmitting.value = true;
+  trackFeedback.value = '';
+  try {
+    await profileStore.untrackGame(gameId.value);
+    trackFeedback.value = 'Removed from your library.';
+    setTimeout(() => {
+      trackFeedback.value = '';
+    }, 3000);
+  } catch (err: any) {
+    trackFeedback.value = err.message || 'Error removing from library';
+  } finally {
+    isTrackingSubmitting.value = false;
+  }
+};
 
 const handleToggleFollow = async () => {
   if (!authStore.isAuthenticated) {
@@ -183,6 +248,93 @@ const formatDate = (isoStr: string) => {
         <div class="photos-grid">
           <div v-for="(photo, index) in gamesStore.currentGame.photos" :key="index" class="photo-item">
             <img :src="photo" :alt="`${gamesStore.currentGame.title} screenshot ${index + 1}`" loading="lazy" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Gamer Library Tracker Card -->
+      <div class="tracker-section card">
+        <div class="tracker-header">
+          <h3>🎮 My Library & Playtime Tracker</h3>
+          <span v-if="isTracked" class="tracked-pill">In Your Library</span>
+        </div>
+        <p class="section-subtext">
+          Track your gameplay status, logged hours, preferred platform, and personal rating to display on your gamer profile.
+        </p>
+
+        <div v-if="!authStore.isAuthenticated" class="auth-prompt">
+          <p>Sign in to track your hours and add this game to your library.</p>
+          <router-link to="/login" class="btn btn-primary">Sign In to Track</router-link>
+        </div>
+
+        <div v-else class="tracker-form">
+          <div class="tracker-row">
+            <div class="form-group flex-1">
+              <label for="track-status">Status</label>
+              <select id="track-status" v-model="trackStatus" class="form-select">
+                <option value="want_to_play">Want to Play</option>
+                <option value="playing">Currently Playing</option>
+                <option value="completed">Completed</option>
+                <option value="dropped">Dropped</option>
+              </select>
+            </div>
+
+            <div class="form-group flex-1">
+              <label for="track-hours">Hours Played</label>
+              <input
+                id="track-hours"
+                v-model.number="trackHours"
+                type="number"
+                min="0"
+                step="0.5"
+                class="form-input"
+                placeholder="0"
+              />
+            </div>
+
+            <div class="form-group flex-1">
+              <label for="track-platform">Platform</label>
+              <select id="track-platform" v-model="trackPlatform" class="form-select">
+                <option value="">Select Platform</option>
+                <option v-for="plat in gamesStore.currentGame.platforms" :key="plat" :value="plat">
+                  {{ plat }}
+                </option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div class="form-group flex-1">
+              <label for="track-score">Personal Score (0–10)</label>
+              <input
+                id="track-score"
+                v-model.number="trackScore"
+                type="number"
+                min="0"
+                max="10"
+                step="0.5"
+                class="form-input"
+                placeholder="Optional"
+              />
+            </div>
+          </div>
+
+          <div class="tracker-actions">
+            <button
+              class="btn btn-primary"
+              :disabled="isTrackingSubmitting"
+              @click="handleSaveTrack"
+            >
+              {{ isTracked ? 'Update Library Status' : 'Add to My Library' }}
+            </button>
+            <button
+              v-if="isTracked"
+              class="btn btn-secondary-danger"
+              :disabled="isTrackingSubmitting"
+              @click="handleRemoveTrack"
+            >
+              Remove from Library
+            </button>
+            <span v-if="trackFeedback" class="tracker-feedback">{{ trackFeedback }}</span>
           </div>
         </div>
       </div>
@@ -844,6 +996,76 @@ const formatDate = (isoStr: string) => {
   background: rgba(239, 68, 68, 0.15);
   border: 1px solid rgba(239, 68, 68, 0.3);
   color: #f87171;
+}
+
+.tracker-section {
+  margin-bottom: 2rem;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 1.75rem;
+}
+
+.tracker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.tracked-pill {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.tracker-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.flex-1 {
+  flex: 1 1 200px;
+}
+
+.form-select {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: #f8fafc;
+  font-size: 0.95rem;
+}
+
+.tracker-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.btn-secondary-danger {
+  background: transparent;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+}
+
+.btn-secondary-danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.tracker-feedback {
+  font-size: 0.9rem;
+  color: #34d399;
+  font-weight: 600;
 }
 
 @media (max-width: 640px) {

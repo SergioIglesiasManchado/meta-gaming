@@ -1,6 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { GameController } from "../controllers/game.controller.js";
+import { ProfileController } from "../controllers/profile.controller.js";
 import { requireAuth, requireAdmin } from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -45,5 +46,10 @@ router.delete("/:id/follow", requireAuth, GameController.unfollowGame);
 // Reviews routes
 router.get("/:id/reviews", GameController.getGameReviews);
 router.post("/:id/reviews", requireAuth, GameController.createOrUpdateReview);
+
+// Library tracking routes
+router.get("/:id/track", requireAuth, ProfileController.getGameTrack);
+router.post("/:id/track", requireAuth, ProfileController.trackGame);
+router.delete("/:id/track", requireAuth, ProfileController.untrackGame);
 
 export default router;
