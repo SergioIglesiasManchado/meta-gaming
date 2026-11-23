@@ -204,4 +204,37 @@ describe('Social Friends & 1-on-1 / Group Chat API Battery', () => {
     // Clean up outsider
     await query('DELETE FROM users WHERE id = $1', [outId]);
   });
+
+  it('searches gamers by query and reports accurate friendship status', async () => {
+    // User C searches for user A
+    const res = await request(app)
+      .get(`/api/v1/social/search?q=${userA.username.substring(0, 8)}`)
+      .set('Authorization', `Bearer ${tokenC}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('success');
+    expect(Array.isArray(res.body.data)).toBe(true);
+
+    const foundA = res.body.data.find((u: any) => u.user_id === idA);
+    expect(foundA).toBeDefined();
+    expect(foundA.username).toBe(userA.username);
+    // Not friends yet with C
+    expect(foundA.friendship_status).toBe('none');
+
+    // Make sure user C does not appear in their own search
+    const foundSelf = res.body.data.find((u: any) => u.user_id === idC);
+    expect(foundSelf).toBeUndefined();
+  });
+
+  it('reports friendship_status as accepted when searching an existing friend', async () => {
+    // User A searches for user B (they are already friends)
+    const res = await request(app)
+      .get(`/api/v1/social/search?q=${userB.username}`)
+      .set('Authorization', `Bearer ${tokenA}`);
+
+    expect(res.status).toBe(200);
+    const foundB = res.body.data.find((u: any) => u.user_id === idB);
+    expect(foundB).toBeDefined();
+    expect(foundB.friendship_status).toBe('accepted');
+  });
 });

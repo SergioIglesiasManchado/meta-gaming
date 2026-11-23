@@ -3,15 +3,80 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useGamesStore } from '../stores/games';
+import { useProfileStore } from '../stores/profile';
+import { useSocialStore } from '../stores/social';
 import type { UserProfile } from '../types/auth';
+import type { SearchedGamer } from '../types/chat';
 import { apiBaseUrl, getApiUrl, parseJsonResponse } from '../config/api';
 
 const router = useRouter();
 const authStore = useAuthStore();
 const gamesStore = useGamesStore();
+const profileStore = useProfileStore();
+const socialStore = useSocialStore();
 
 const user = computed(() => authStore.user);
 const isAdmin = computed(() => authStore.isAdmin);
+
+// Gamer friend search state
+const gamerQuery = ref('');
+const gamerSearchResults = ref<SearchedGamer[]>([]);
+const searchingGamers = ref(false);
+const gamerSearchMessage = ref('');
+
+const formatStatus = (status: string) => {
+  switch (status) {
+    case 'playing': return 'Playing';
+    case 'completed': return 'Completed';
+    case 'want_to_play': return 'Want to Play';
+    case 'dropped': return 'Dropped';
+    default: return status;
+  }
+};
+
+const searchGamers = async () => {
+  if (!gamerQuery.value.trim()) return;
+  searchingGamers.value = true;
+  gamerSearchMessage.value = '';
+  try {
+    gamerSearchResults.value = await socialStore.searchGamers(gamerQuery.value.trim());
+    if (gamerSearchResults.value.length === 0) {
+      gamerSearchMessage.value = 'No gamers found matching that username.';
+    }
+  } catch (err: any) {
+    gamerSearchMessage.value = err.message || 'Error searching gamers';
+  } finally {
+    searchingGamers.value = false;
+  }
+};
+
+const sendFriendRequest = async (targetUserId: number) => {
+  try {
+    await socialStore.sendFriendRequest(targetUserId);
+    const found = gamerSearchResults.value.find((g) => g.user_id === targetUserId);
+    if (found) {
+      found.friendship_status = 'pending_sent';
+    }
+  } catch (err: any) {
+    alert(err.message || 'Error sending friend request');
+  }
+};
+
+const acceptFriendRequest = async (requestId: number) => {
+  try {
+    await socialStore.respondRequest(requestId, 'accepted');
+  } catch (err: any) {
+    alert(err.message || 'Error accepting friend request');
+  }
+};
+
+const declineFriendRequest = async (requestId: number) => {
+  try {
+    await socialStore.respondRequest(requestId, 'declined');
+  } catch (err: any) {
+    alert(err.message || 'Error declining friend request');
+  }
+};
 
 // Admin user search & management state
 const searchQuery = ref('');
@@ -142,6 +207,12 @@ onMounted(async () => {
     fetchUsers();
   } else {
     await gamesStore.fetchFollowedGames();
+    if (user.value?.id) {
+      await profileStore.fetchProfile(user.value.id);
+      await profileStore.fetchLibrary(user.value.id);
+      await socialStore.fetchFriends();
+      await socialStore.fetchPendingRequests();
+    }
   }
 });
 </script>
@@ -344,25 +415,34 @@ onMounted(async () => {
       </div>
 
       <!-- Gamer stats -->
-      <div class="stats-grid">
+      <div class="stats-grid gamer-stats-grid">
         <div class="stat-card">
           <span class="stat-label">Games Recorded</span>
-          <span class="stat-value">0</span>
+          <span class="stat-value">{{ profileStore.profile?.stats.total_games_tracked ?? profileStore.library.length }}</span>
         </div>
         <div class="stat-card">
           <span class="stat-label">Playtime Logged</span>
-          <span class="stat-value">0 hrs</span>
+          <span class="stat-value">{{ profileStore.profile?.stats.total_hours_played ?? 0 }} hrs</span>
         </div>
         <div class="stat-card">
           <span class="stat-label">Followed Games</span>
           <span class="stat-value">{{ gamesStore.followedGames.length }}</span>
         </div>
+        <div class="stat-card">
+          <span class="stat-label">Friends</span>
+          <span class="stat-value">{{ socialStore.friends.length }}</span>
+        </div>
       </div>
 
       <!-- Followed Games section -->
       <div class="user-card">
-        <div class="followed-header">
-          <h3>⭐ Followed Videogames</h3>
+        <div class="card-header-flex">
+          <div class="followed-header">
+            <h3>⭐ Followed Videogames</h3>
+          </div>
+          <button class="btn btn-secondary-sm" @click="router.push('/games')">
+            Browse Catalog →
+          </button>
         </div>
 
         <div v-if="gamesStore.loading" class="loading-state">Loading followed games...</div>
@@ -403,12 +483,187 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="user-card">
-        <h3>🕹️ Your Game Library</h3>
-        <p class="empty-state">
-          You haven't tracked any games yet. Soon you will be able to search for your favorite games,
-          track your completion status, and log hours played!
-        </p>
+      <!-- My Game Library & Playtime Tracker -->
+      <div class="user-card library-tracker-card">
+        <div class="card-header-flex">
+          <div>
+            <h3>🕹️ My Library &amp; Playtime Tracker</h3>
+            <p class="section-subtext">Manage tracked games, playtime records, and personal scores</p>
+          </div>
+          <div class="header-action-btns">
+            <button class="btn btn-secondary-sm" @click="router.push('/games')">
+              + Track a Game
+            </button>
+            <router-link v-if="user?.id" :to="'/profile/' + user.id" class="btn-profile-link">
+              Full Profile →
+            </router-link>
+          </div>
+        </div>
+
+        <div v-if="profileStore.loading" class="loading-state">Loading your library...</div>
+
+        <div v-else-if="profileStore.library.length === 0" class="empty-state">
+          <p>You haven't tracked any games in your library yet.</p>
+          <p class="empty-hint">
+            Visit any game's page in the catalog to record whether you're playing, completed, or want to play, log hours, and rate it!
+          </p>
+          <button class="btn btn-primary" @click="router.push('/games')">
+            Browse Games to Track 🎮
+          </button>
+        </div>
+
+        <div v-else class="library-grid">
+          <div
+            v-for="item in profileStore.library"
+            :key="item.game_id"
+            class="library-item-card"
+          >
+            <div class="lib-thumb">
+              <img
+                v-if="item.game_photos && item.game_photos.length > 0"
+                :src="item.game_photos[0]"
+                :alt="item.game_title || 'Game'"
+                @error="(e: Event) => ((e.target as HTMLImageElement).style.display = 'none')"
+              />
+              <span v-else class="lib-thumb-placeholder">🎮</span>
+              <span class="lib-status-badge" :class="'badge-' + item.status">
+                {{ formatStatus(item.status) }}
+              </span>
+            </div>
+            <div class="lib-info">
+              <strong class="lib-title" @click="router.push(`/games/${item.game_id}`)">
+                {{ item.game_title || 'Unknown Game' }}
+              </strong>
+              <div class="lib-metrics">
+                <span class="metric-hours">⏱️ {{ item.hours_played }} hrs</span>
+                <span v-if="item.personal_score !== null && item.personal_score !== undefined" class="metric-score">
+                  ★ {{ item.personal_score }}/10
+                </span>
+              </div>
+              <button class="btn-update-track" @click="router.push(`/games/${item.game_id}`)">
+                Log Time / Update →
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Friends & Gamer Social Hub -->
+      <div class="user-card social-hub-card">
+        <div class="card-header-flex">
+          <div>
+            <h3>👥 Friends &amp; Gamer Social</h3>
+            <p class="section-subtext">Find gamers, send friend requests, and start 1-on-1 or group chats</p>
+          </div>
+          <button class="btn btn-secondary-sm" @click="router.push('/chat')">
+            Open Messenger 💬
+          </button>
+        </div>
+
+        <!-- Incoming Friend Requests Banner -->
+        <div v-if="socialStore.incomingRequests.length > 0" class="pending-requests-banner">
+          <h4>🔔 Friend Requests ({{ socialStore.incomingRequests.length }})</h4>
+          <div class="requests-list">
+            <div
+              v-for="req in socialStore.incomingRequests"
+              :key="req.id"
+              class="request-card"
+            >
+              <div class="req-info">
+                <strong>{{ req.requester_username }}</strong> wants to be friends
+              </div>
+              <div class="req-btns">
+                <button class="btn-req btn-accept" @click="acceptFriendRequest(req.id)">Accept</button>
+                <button class="btn-req btn-decline" @click="declineFriendRequest(req.id)">Decline</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Find Gamers Search Bar -->
+        <div class="gamer-search-section">
+          <label class="search-label">🔍 Find Gamers to Add as Friends</label>
+          <div class="search-bar">
+            <input
+              v-model="gamerQuery"
+              type="text"
+              placeholder="Search by username (e.g. MasterGamer)..."
+              @keyup.enter="searchGamers"
+            />
+            <button class="btn-search" :disabled="searchingGamers" @click="searchGamers">
+              {{ searchingGamers ? 'Searching...' : 'Find Gamers' }}
+            </button>
+          </div>
+          <p v-if="gamerSearchMessage" class="search-msg">{{ gamerSearchMessage }}</p>
+
+          <!-- Search Results -->
+          <div v-if="gamerSearchResults.length > 0" class="search-results-list">
+            <div
+              v-for="gamer in gamerSearchResults"
+              :key="gamer.user_id"
+              class="gamer-result-item"
+            >
+              <div class="gamer-avatar">
+                <img v-if="gamer.avatar_url" :src="gamer.avatar_url" alt="" />
+                <span v-else>{{ gamer.username.substring(0, 2).toUpperCase() }}</span>
+              </div>
+              <div class="gamer-details">
+                <span class="gamer-name">{{ gamer.username }}</span>
+                <span v-if="gamer.bio" class="gamer-bio">{{ gamer.bio }}</span>
+              </div>
+              <div class="gamer-actions">
+                <button
+                  v-if="gamer.friendship_status === 'none'"
+                  class="btn-friend-add"
+                  @click="sendFriendRequest(gamer.user_id)"
+                >
+                  + Add Friend
+                </button>
+                <span v-else-if="gamer.friendship_status === 'pending_sent'" class="badge-pending">
+                  ⏳ Request Sent
+                </span>
+                <span v-else-if="gamer.friendship_status === 'accepted'" class="badge-friend">
+                  ✓ Friends
+                </span>
+                <button
+                  v-else-if="gamer.friendship_status === 'pending_received'"
+                  class="btn-friend-add"
+                  @click="router.push('/chat')"
+                >
+                  Accept in Chat
+                </button>
+                <router-link :to="'/profile/' + gamer.user_id" class="btn-view-profile">
+                  Profile →
+                </router-link>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Friends List or Friendly Guide -->
+        <div v-if="socialStore.friends.length > 0" class="my-friends-section">
+          <h4>My Friends ({{ socialStore.friends.length }})</h4>
+          <div class="friends-row">
+            <div
+              v-for="friend in socialStore.friends"
+              :key="friend.user_id"
+              class="friend-chip"
+            >
+              <span class="chip-avatar">{{ friend.username.substring(0, 2).toUpperCase() }}</span>
+              <span class="chip-name">{{ friend.username }}</span>
+              <button class="btn-chip-chat" @click="router.push('/chat')" title="Chat">💬</button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="social-guide">
+          <p class="guide-title">💡 <strong>How to add and connect with friends:</strong></p>
+          <ul class="guide-list">
+            <li>Search any player's username above and click <strong>+ Add Friend</strong> to send an invite.</li>
+            <li>Explore any game's <strong>Community forum</strong> and click on authors of guides or questions to visit their profile and connect.</li>
+            <li>Once accepted, start <strong>1-on-1 direct chats</strong> or invite friends to <strong>group conversations</strong> in Messenger!</li>
+          </ul>
+        </div>
       </div>
     </section>
   </div>
@@ -842,6 +1097,415 @@ onMounted(async () => {
 }
 
 .diagnostics-list li { color: #334155; }
+
+.card-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.section-subtext {
+  color: var(--text-muted, #64748b);
+  font-size: 0.875rem;
+  margin: 0.25rem 0 0 0;
+}
+
+.header-action-btns {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.btn-secondary-sm {
+  background: transparent;
+  border: 1px solid var(--border-color, #cbd5e1);
+  color: var(--text-color, #334155);
+  padding: 0.4rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary-sm:hover {
+  background: var(--hover-bg, #f1f5f9);
+  border-color: #94a3b8;
+}
+
+.btn-profile-link {
+  color: #6366f1;
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.btn-profile-link:hover {
+  text-decoration: underline;
+}
+
+.empty-hint {
+  font-size: 0.875rem;
+  color: var(--text-muted, #64748b);
+  max-width: 460px;
+  margin: 0.5rem auto 1rem auto;
+}
+
+/* Library Grid */
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.library-item-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.library-item-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+}
+
+.lib-thumb {
+  height: 120px;
+  background: var(--hover-bg, #0f172a);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lib-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lib-thumb-placeholder {
+  font-size: 2.5rem;
+}
+
+.lib-status-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.725rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badge-playing { background: #3b82f6; color: #fff; }
+.badge-completed { background: #10b981; color: #fff; }
+.badge-want_to_play { background: #f59e0b; color: #fff; }
+.badge-dropped { background: #6b7280; color: #fff; }
+
+.lib-info {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.lib-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-color, #1e293b);
+  cursor: pointer;
+}
+
+.lib-title:hover {
+  color: #6366f1;
+}
+
+.lib-metrics {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.825rem;
+  color: var(--text-muted, #64748b);
+}
+
+.metric-score {
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+.btn-update-track {
+  margin-top: auto;
+  background: transparent;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 6px;
+  padding: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6366f1;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.btn-update-track:hover {
+  background: var(--hover-bg, #f8fafc);
+  border-color: #c7d2fe;
+}
+
+/* Social Hub */
+.pending-requests-banner {
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.pending-requests-banner h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  color: #92400e;
+}
+
+.requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.request-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #fcd34d;
+}
+
+.req-info {
+  font-size: 0.875rem;
+  color: #1e293b;
+}
+
+.req-btns {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-req {
+  border: none;
+  padding: 0.25rem 0.65rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-accept { background: #10b981; color: #fff; }
+.btn-decline { background: #ef4444; color: #fff; }
+
+.gamer-search-section {
+  margin-bottom: 1.5rem;
+}
+
+.search-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--text-color, #334155);
+}
+
+.search-msg {
+  font-size: 0.825rem;
+  color: var(--text-muted, #64748b);
+  margin-top: 0.4rem;
+}
+
+.search-results-list {
+  margin-top: 0.75rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.gamer-result-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background: var(--hover-bg, #f8fafc);
+  border-radius: 6px;
+}
+
+.gamer-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #6366f1;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.gamer-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gamer-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.gamer-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-color, #1e293b);
+}
+
+.gamer-bio {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+.gamer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-friend-add {
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.badge-pending {
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+}
+
+.badge-friend {
+  background: #d1fae5;
+  color: #065f46;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+}
+
+.btn-view-profile {
+  font-size: 0.8rem;
+  color: #6366f1;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.btn-view-profile:hover {
+  text-decoration: underline;
+}
+
+.my-friends-section h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.95rem;
+}
+
+.friends-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.friend-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  padding: 0.35rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+}
+
+.chip-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #6366f1;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-chip-chat {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+.social-guide {
+  background: var(--hover-bg, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+}
+
+.guide-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  color: var(--text-color, #1e293b);
+}
+
+.guide-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--text-muted, #475569);
+}
 
 /* Mobile */
 @media (max-width: 640px) {

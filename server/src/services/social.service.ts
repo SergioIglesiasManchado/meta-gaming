@@ -173,4 +173,39 @@ export class SocialService {
     if (row.requester_id === userId) return 'pending_sent';
     return 'pending_received';
   }
+
+  static async searchGamers(userId: number, searchQuery: string, limit: number = 20): Promise<any[]> {
+    if (!searchQuery || searchQuery.trim().length === 0) {
+      return [];
+    }
+
+    const sql = `
+      SELECT
+        u.id as user_id,
+        u.username,
+        u.role,
+        COALESCE(up.avatar_url, '') as avatar_url,
+        COALESCE(up.bio, '') as bio,
+        CASE
+          WHEN f.status = 'accepted' THEN 'accepted'
+          WHEN f.status = 'pending' AND f.requester_id = $1 THEN 'pending_sent'
+          WHEN f.status = 'pending' AND f.addressee_id = $1 THEN 'pending_received'
+          ELSE 'none'
+        END as friendship_status
+      FROM users u
+      LEFT JOIN user_profiles up ON up.user_id = u.id
+      LEFT JOIN friendships f ON (
+        (f.requester_id = $1 AND f.addressee_id = u.id)
+        OR (f.requester_id = u.id AND f.addressee_id = $1)
+      )
+      WHERE u.id != $1
+        AND u.is_banned = FALSE
+        AND LOWER(u.username) LIKE LOWER($2)
+      ORDER BY u.username ASC
+      LIMIT $3
+    `;
+
+    const res = await query<any>(sql, [userId, `%${searchQuery.trim()}%`, limit]);
+    return res.rows;
+  }
 }

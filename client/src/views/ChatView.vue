@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router';
 import { useChatStore } from '../stores/chat';
 import { useSocialStore } from '../stores/social';
 import { useAuthStore } from '../stores/auth';
-import type { ChatConversation } from '../types/chat';
+import type { ChatConversation, SearchedGamer } from '../types/chat';
 
 const route = useRoute();
 const chatStore = useChatStore();
@@ -18,6 +18,40 @@ const groupTitle = ref('');
 const selectedGroupFriendIds = ref<number[]>([]);
 const groupError = ref('');
 const messagesContainer = ref<HTMLElement | null>(null);
+
+// Friend search state
+const friendSearchQuery = ref('');
+const friendSearchResults = ref<SearchedGamer[]>([]);
+const searchingFriends = ref(false);
+const friendSearchMessage = ref('');
+
+const handleSearchGamers = async () => {
+  if (!friendSearchQuery.value.trim()) return;
+  searchingFriends.value = true;
+  friendSearchMessage.value = '';
+  try {
+    friendSearchResults.value = await socialStore.searchGamers(friendSearchQuery.value.trim());
+    if (friendSearchResults.value.length === 0) {
+      friendSearchMessage.value = 'No gamers found matching that username.';
+    }
+  } catch (err: any) {
+    friendSearchMessage.value = err.message || 'Error searching gamers';
+  } finally {
+    searchingFriends.value = false;
+  }
+};
+
+const handleSendFriendRequest = async (targetUserId: number) => {
+  try {
+    await socialStore.sendFriendRequest(targetUserId);
+    const target = friendSearchResults.value.find((g) => g.user_id === targetUserId);
+    if (target) {
+      target.friendship_status = 'pending_sent';
+    }
+  } catch (err: any) {
+    alert(err.message || 'Error sending friend request');
+  }
+};
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -182,6 +216,67 @@ onMounted(async () => {
 
       <!-- Friends List -->
       <div v-else class="friends-list">
+        <!-- Find Gamers to Add as Friend -->
+        <div class="friend-search-container">
+          <div class="search-input-group">
+            <input
+              v-model="friendSearchQuery"
+              type="text"
+              placeholder="Find gamers to add..."
+              class="friend-search-field"
+              @keyup.enter="handleSearchGamers"
+            />
+            <button
+              class="btn-search-gamer"
+              :disabled="searchingFriends"
+              @click="handleSearchGamers"
+            >
+              {{ searchingFriends ? '...' : 'Search' }}
+            </button>
+          </div>
+          <p v-if="friendSearchMessage" class="friend-search-note">{{ friendSearchMessage }}</p>
+
+          <!-- Search results list -->
+          <div v-if="friendSearchResults.length > 0" class="search-results-box">
+            <div class="search-results-header">
+              <span>Gamers ({{ friendSearchResults.length }})</span>
+              <button class="btn-close-box" @click="friendSearchResults = []; friendSearchQuery = '';">✕</button>
+            </div>
+            <div
+              v-for="gamer in friendSearchResults"
+              :key="gamer.user_id"
+              class="search-gamer-row"
+            >
+              <div class="gamer-row-info">
+                <strong>{{ gamer.username }}</strong>
+                <router-link :to="'/profile/' + gamer.user_id" class="view-profile-sm">Profile</router-link>
+              </div>
+              <div class="gamer-row-action">
+                <button
+                  v-if="gamer.friendship_status === 'none'"
+                  class="btn-add-sm"
+                  @click="handleSendFriendRequest(gamer.user_id)"
+                >
+                  + Add
+                </button>
+                <span v-else-if="gamer.friendship_status === 'pending_sent'" class="tag-status pending">
+                  Sent
+                </span>
+                <span v-else-if="gamer.friendship_status === 'accepted'" class="tag-status friend">
+                  Friends
+                </span>
+                <button
+                  v-else-if="gamer.friendship_status === 'pending_received'"
+                  class="btn-add-sm"
+                  @click="handleAcceptRequest(gamer.user_id)"
+                >
+                  Accept
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Incoming friend requests -->
         <div v-if="socialStore.incomingRequests.length > 0" class="requests-section">
           <span class="section-title">Friend Requests</span>
@@ -610,6 +705,127 @@ onMounted(async () => {
 
 .btn-chat-friend:hover {
   background: #eef2ff;
+}
+
+/* Friend Search inside Chat Sidebar */
+.friend-search-container {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  background: var(--hover-bg, #f9fafb);
+}
+
+.search-input-group {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.friend-search-field {
+  flex: 1;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 6px;
+  font-size: 0.825rem;
+  background: var(--input-bg, #ffffff);
+  color: var(--text-color, #111827);
+}
+
+.btn-search-gamer {
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.friend-search-note {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+  margin: 0.4rem 0 0 0;
+}
+
+.search-results-box {
+  margin-top: 0.65rem;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  padding: 0.5rem;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.search-results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted, #6b7280);
+  margin-bottom: 0.4rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border-color, #f3f4f6);
+}
+
+.btn-close-box {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.8rem;
+}
+
+.search-gamer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-color, #f9fafb);
+  font-size: 0.825rem;
+}
+
+.gamer-row-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.view-profile-sm {
+  font-size: 0.75rem;
+  color: #6366f1;
+  text-decoration: none;
+}
+
+.view-profile-sm:hover {
+  text-decoration: underline;
+}
+
+.btn-add-sm {
+  background: #10b981;
+  color: #fff;
+  border: none;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tag-status {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.tag-status.pending {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.tag-status.friend {
+  background: #d1fae5;
+  color: #065f46;
 }
 
 /* Chat Main Pane */

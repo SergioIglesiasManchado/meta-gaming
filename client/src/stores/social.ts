@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { Friend, FriendRequest } from '../types/chat';
+import type { Friend, FriendRequest, SearchedGamer } from '../types/chat';
 import { useAuthStore } from './auth';
-import { apiBaseUrl, parseJsonResponse } from '../config/api';
+import { apiBaseUrl, getApiUrl, parseJsonResponse } from '../config/api';
 
 export const useSocialStore = defineStore('social', () => {
   const friends = ref<Friend[]>([]);
@@ -103,6 +103,25 @@ export const useSocialStore = defineStore('social', () => {
     }
   };
 
+  const searchGamers = async (query: string): Promise<SearchedGamer[]> => {
+    const authStore = useAuthStore();
+    if (!authStore.isAuthenticated || !query.trim()) return [];
+    try {
+      const url = getApiUrl('/api/v1/social/search');
+      url.searchParams.set('q', query.trim());
+      const res = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${authStore.token}` },
+      });
+      const data = await parseJsonResponse(res);
+      if (res.ok) {
+        return data.data;
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  };
+
   return {
     friends,
     incomingRequests,
@@ -114,5 +133,6 @@ export const useSocialStore = defineStore('social', () => {
     sendFriendRequest,
     respondRequest,
     getFriendshipStatus,
+    searchGamers,
   };
 });
